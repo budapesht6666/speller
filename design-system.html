@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Speller — дизайн-система</title>
+    <meta name="theme-color" content="#ffffff" />
+  </head>
+  <body>
+    <main class="ds-page">
+      <h1 class="ds-title">Дизайн-система</h1>
+      <p class="ds-sub" id="ds-count">…</p>
+
+      <p class="ds-note">
+        Образцы ниже построены разбором <code>src/styles/tokens.css</code>, а не отдельным списком.
+        Поэтому стенд не может разъехаться с системой: переименованный токен исчезает отсюда сам,
+        новый появляется сам. Пустой образец означает, что значение перестало быть валидным.
+      </p>
+
+      <!-- ── Примитивы ───────────────────────────────────────────────────
+           Показаны до таблицы токенов: сначала видно, ради чего система,
+           потом из чего она собрана. -->
+      <section class="ds-section">
+        <h2 class="ds-section__title">Примитивы поверх неба</h2>
+        <p class="ds-section__intro">
+          Стекло читается только на цветном фоне, поэтому показано на настоящем градиенте.
+        </p>
+        <div class="ds-demo ds-demo--sky">
+          <div class="ds-demo__row">
+            <span class="glass">
+              <img src="/assets/objects/target-3.svg" width="20" height="20" alt="" />
+              <span class="score">30</span>
+            </span>
+            <span class="glass glass--round">
+              <img src="/assets/objects/dog-1.svg" width="24" height="24" alt="" />
+            </span>
+          </div>
+          <div class="ds-demo__row">
+            <span class="glass listening">
+              <span class="listening__dot"></span>
+              Слушаю…
+            </span>
+            <span class="glass listening" data-state="off">
+              <span class="listening__dot"></span>
+              Микрофон закрыт
+            </span>
+          </div>
+          <div class="ds-demo__row">
+            <img class="ds-object-demo" src="/assets/objects/ball.svg" alt="" />
+            <img class="ds-object-demo" src="/assets/objects/burger.svg" alt="" />
+            <img class="ds-object-demo" src="/assets/objects/tree-1.svg" alt="" />
+          </div>
+        </div>
+      </section>
+
+      <section class="ds-section">
+        <h2 class="ds-section__title">Примитивы на бумаге</h2>
+        <div class="ds-demo">
+          <h3 class="display">Сбит!</h3>
+          <p class="lead">Одно слово от вас ускользнуло. Послушайте его ниже и взлетайте снова.</p>
+
+          <div class="stats">
+            <div class="stat">
+              <img class="stat__icon" src="/assets/ui/circle-clock.svg" alt="" />
+              <div class="stat__label">Время</div>
+              <div class="stat__value">0:32</div>
+            </div>
+            <div class="stat">
+              <img class="stat__icon" src="/assets/objects/target-3.svg" alt="" />
+              <div class="stat__label">Очки</div>
+              <div class="stat__value">60</div>
+            </div>
+            <div class="stat">
+              <img class="stat__icon" src="/assets/ui/check-thick.svg" alt="" />
+              <div class="stat__label">Слова</div>
+              <div class="stat__value">12</div>
+            </div>
+          </div>
+
+          <div>
+            <p class="eyebrow">Слово, которое вас подвело</p>
+            <div class="word">
+              <span class="word__text">Ball</span>
+              <button class="word__action" type="button" aria-label="Послушать">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+                  <path
+                    d="M4 9.5h3.2L12 5.5v13L7.2 14.5H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <button class="btn btn--cta" type="button">Готово</button>
+          <button class="btn btn--quiet" type="button">Не сейчас</button>
+        </div>
+      </section>
+
+      <div id="ds-root"></div>
+    </main>
+
+    <script type="module" src="/src/design-system.ts"></script>
+  </body>
+</html>

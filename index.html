@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Speller</title>
+
+    <!-- Запуск с домашнего экрана. На iOS «Добавить на экран Домой» даёт WebClip,
+         а не полноценный PWA: standalone включается именно этим метатегом,
+         манифест там интерпретируется иначе, чем в Android Chrome. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Speller" />
+    <meta name="theme-color" content="#3878e0" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+  </head>
+  <body>
+    <!-- ── Игровой экран ─────────────────────────────────────────────────── -->
+    <main class="screen screen--sky" id="screen-play">
+      <div class="clouds" aria-hidden="true">
+        <span class="cloud cloud--1"></span>
+        <span class="cloud cloud--2"></span>
+        <span class="cloud cloud--3"></span>
+        <span class="cloud cloud--4"></span>
+      </div>
+
+      <header class="hud">
+        <button class="glass glass--round" type="button" aria-label="Назад">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+            <path
+              d="M15 5 8 12l7 7"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+
+        <span class="glass">
+          <img src="/assets/objects/target-3.svg" width="20" height="20" alt="" />
+          <span class="score" id="score">30</span>
+        </span>
+
+        <span class="glass glass--round">
+          <img src="/assets/objects/dog-1.svg" width="24" height="24" alt="" />
+        </span>
+      </header>
+
+      <div class="field" id="field">
+        <!-- Предметы в полёте. В M1 расставлены статикой, чтобы утвердить вид;
+             в M2 их ставит игровой цикл. -->
+        <img class="object" src="/assets/objects/burger.svg" alt="burger" style="left: 22%; top: 26%" />
+        <img class="object" src="/assets/objects/ball.svg" alt="ball" style="left: 58%; top: 47%" />
+        <img class="object" src="/assets/objects/tree-1.svg" alt="tree" style="left: 30%; top: 66%" />
+      </div>
+
+      <footer class="hud-foot">
+        <span class="glass listening" id="listening">
+          <span class="listening__dot"></span>
+          Слушаю…
+        </span>
+      </footer>
+    </main>
+
+    <!-- ── Экран проигрыша ───────────────────────────────────────────────── -->
+    <main class="screen screen--paper" id="screen-finish" hidden>
+      <div class="finish__hero">
+        <!-- Героем экрана стоит не абстрактный маскот, а тот самый предмет,
+             который не успели назвать: человек видит ровно то, что упустил. -->
+        <img class="finish__mascot" id="finish-object" src="/assets/objects/ball.svg" alt="" />
+        <h1 class="display">Сбит!</h1>
+        <p class="lead">Одно слово от вас ускользнуло. Послушайте его ниже и взлетайте снова.</p>
+      </div>
+
+      <div class="finish__foot">
+        <div class="stats">
+          <div class="stat">
+            <img class="stat__icon" src="/assets/ui/circle-clock.svg" alt="" />
+            <div class="stat__label">Время</div>
+            <div class="stat__value" id="stat-time">0:32</div>
+          </div>
+          <div class="stat">
+            <img class="stat__icon" src="/assets/objects/target-3.svg" alt="" />
+            <div class="stat__label">Очки</div>
+            <div class="stat__value" id="stat-score">60</div>
+          </div>
+          <div class="stat">
+            <img class="stat__icon" src="/assets/ui/check-thick.svg" alt="" />
+            <div class="stat__label">Слова</div>
+            <div class="stat__value" id="stat-words">12</div>
+          </div>
+        </div>
+
+        <div>
+          <p class="eyebrow">Слово, которое вас подвело</p>
+          <div class="word">
+            <span class="word__text" id="finish-word">Ball</span>
+            <button class="word__action" type="button" id="speak" aria-label="Послушать">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+                <path
+                  d="M4 9.5h3.2L12 5.5v13L7.2 14.5H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1Z"
+                  fill="currentColor"
+                />
+                <path
+                  d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button class="btn btn--cta" type="button" id="again">Готово</button>
+      </div>
+    </main>
+
+    <!-- Переключатель экранов. Существует только пока игрового цикла нет:
+         без него второй экран не посмотреть на телефоне. Уходит в M2. -->
+    <button class="dev-switch" type="button" id="dev-switch">Экран ⇄</button>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

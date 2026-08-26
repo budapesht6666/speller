@@ -1,0 +1,417 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   ПРИМИТИВЫ
+   ─────────────────────────────────────────────────────────────────────────
+   Десяток классов, из которых собраны оба экрана. Ни одного сырого значения:
+   всё приходит из tokens.css. Каждый примитив показан на /design-system.html.
+   ───────────────────────────────────────────────────────────────────────── */
+
+@import './tokens.css';
+
+/* ── Сброс и корпус ────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-normal);
+  color: var(--c-text);
+  background: var(--c-paper);
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  /* Игра живёт в один экран: страница не прокручивается, а резиновый отскок
+     Safari в standalone выглядит поломкой приложения. */
+  overscroll-behavior: none;
+}
+
+/* Ничто в игре не выделяется по долгому нажатию и не подсвечивается при
+   касании — иначе приложение выдаёт в себе веб-страницу. Поля ввода
+   исключены осознанно: там выделение нужно. */
+body:not(:has(input:focus)) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* ── Экран ─────────────────────────────────────────────────────────────── */
+
+/* dvh, а не vh: в Safari на iOS строка адреса меняет высоту вьюпорта, и на
+   vh нижняя пилюля уезжает под неё. В standalone разницы нет, но во вкладке
+   она заметна сразу. */
+.screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding: calc(env(safe-area-inset-top) + var(--space-3)) var(--gutter)
+    calc(env(safe-area-inset-bottom) + var(--space-4));
+}
+
+.screen--sky {
+  background: var(--sky-gradient);
+  overflow: hidden;
+}
+
+.screen--paper {
+  background: var(--c-paper);
+}
+
+/* ── Стекло: пилюли поверх неба ────────────────────────────────────────── */
+
+.glass {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid var(--c-glass-border);
+  border-radius: var(--radius-pill);
+  background: var(--c-glass);
+  color: var(--c-glass-ink);
+  box-shadow: var(--shadow-glass);
+  -webkit-backdrop-filter: blur(var(--blur-glass));
+  backdrop-filter: blur(var(--blur-glass));
+}
+
+.glass--round {
+  padding: var(--space-2);
+  aspect-ratio: 1;
+  justify-content: center;
+}
+
+/* ── Счёт ──────────────────────────────────────────────────────────────── */
+
+.score {
+  font-size: var(--text-score);
+  font-weight: var(--weight-black);
+  font-variant-numeric: var(--numeric);
+  letter-spacing: var(--tracking-normal);
+}
+
+/* ── Индикатор «Слушаю» ────────────────────────────────────────────────── */
+
+.listening {
+  font-size: var(--text-small);
+  font-weight: var(--weight-semibold);
+}
+
+.listening__dot {
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--c-live);
+  flex: 0 0 auto;
+}
+
+/* Состояние «микрофон закрыт»: точка гаснет, текст тускнеет. Это не ошибка,
+   а честное сообщение — молчащая игра без объяснения хуже. */
+.listening[data-state='off'] .listening__dot {
+  background: var(--c-text-faint);
+}
+
+/* ── Предмет в полёте ──────────────────────────────────────────────────── */
+
+.object {
+  position: absolute;
+  width: var(--object-size, 84px);
+  height: var(--object-size, 84px);
+  filter: drop-shadow(var(--shadow-object));
+  will-change: transform;
+}
+
+/* ── Заголовки ─────────────────────────────────────────────────────────── */
+
+.display {
+  margin: 0;
+  font-size: var(--text-display);
+  font-weight: var(--weight-black);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-display);
+  color: var(--c-accent);
+  text-align: center;
+}
+
+.lead {
+  margin: var(--space-3) auto 0;
+  max-width: var(--measure);
+  font-size: var(--text-lead);
+  line-height: var(--leading-normal);
+  color: var(--c-text-muted);
+  text-align: center;
+}
+
+.eyebrow {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  color: var(--c-text-faint);
+}
+
+.caption {
+  font-size: var(--text-small);
+  color: var(--c-text-muted);
+}
+
+/* ── Карточка статистики ───────────────────────────────────────────────── */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+
+.stat {
+  padding: var(--space-4) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.stat__icon {
+  width: var(--space-6);
+  height: var(--space-6);
+  margin-bottom: var(--space-3);
+}
+
+.stat__label {
+  font-size: var(--text-small);
+  color: var(--c-text-muted);
+}
+
+.stat__value {
+  font-size: var(--text-stat);
+  font-weight: var(--weight-black);
+  font-variant-numeric: var(--numeric);
+  line-height: var(--leading-snug);
+}
+
+/* ── Поле слова ────────────────────────────────────────────────────────── */
+
+.word {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--c-surface);
+}
+
+.word__text {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-h2);
+  font-weight: var(--weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.word__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-8);
+  height: var(--space-8);
+  flex: 0 0 auto;
+  border-radius: var(--radius-pill);
+  color: var(--c-accent);
+  transition: background var(--duration-instant) var(--ease-out);
+}
+
+.word__action:active {
+  background: var(--c-accent-wash);
+}
+
+/* ── Кнопки ────────────────────────────────────────────────────────────── */
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-4) var(--space-6);
+  border-radius: var(--radius-xl);
+  font-size: var(--text-body);
+  font-weight: var(--weight-black);
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  transition:
+    transform var(--duration-instant) var(--ease-out),
+    box-shadow var(--duration-instant) var(--ease-out);
+}
+
+.btn--cta {
+  background: linear-gradient(180deg, var(--c-accent-warm) 0%, var(--c-accent) 100%);
+  color: var(--c-accent-ink);
+  box-shadow: var(--shadow-cta);
+}
+
+/* Кнопка проседает на своё же смещение тени: получается физическое нажатие,
+   а не смена цвета. */
+.btn--cta:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 var(--c-accent-deep), 0 4px 12px rgba(250, 80, 0, 0.28);
+}
+
+.btn--quiet {
+  min-height: 44px;
+  border-radius: var(--radius-pill);
+  background: var(--c-surface);
+  color: var(--c-text-muted);
+  font-weight: var(--weight-semibold);
+  text-transform: none;
+  letter-spacing: var(--tracking-normal);
+}
+
+/* ── Раскладка экрана проигрыша ────────────────────────────────────────── */
+
+.finish__hero {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) 0;
+}
+
+.finish__mascot {
+  width: 128px;
+  height: 128px;
+  margin-bottom: var(--space-6);
+}
+
+.finish__foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* ── Раскладка игрового экрана ─────────────────────────────────────────── */
+
+.hud {
+  position: relative;
+  z-index: var(--z-hud);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex: 0 0 auto;
+}
+
+.hud-foot {
+  position: relative;
+  z-index: var(--z-hud);
+  display: flex;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+/* Поле полёта — единственная растягивающаяся часть экрана. Предметы внутри
+   позиционируются в процентах от него, а не от окна: иначе нижняя пилюля и
+   safe-area съедали бы зону падения по-разному на разных телефонах. */
+.field {
+  position: relative;
+  z-index: var(--z-objects);
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Облака ────────────────────────────────────────────────────────────── */
+
+/* Рисуются на CSS, а не картинками: мягкое пятно с размытием масштабируется без
+   ассетов и не спорит с объёмными предметами за внимание. Пиксель-арт из
+   референса здесь был бы вторым визуальным языком на одном экране. */
+.clouds {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-clouds);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.cloud {
+  position: absolute;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.72);
+  filter: blur(12px);
+}
+
+.cloud--1 {
+  left: -6%;
+  top: 9%;
+  width: 46%;
+  height: 7%;
+}
+
+.cloud--2 {
+  right: -8%;
+  top: 27%;
+  width: 40%;
+  height: 6%;
+  opacity: 0.8;
+}
+
+.cloud--3 {
+  left: -10%;
+  top: 52%;
+  width: 38%;
+  height: 6%;
+  opacity: 0.7;
+}
+
+.cloud--4 {
+  right: -4%;
+  top: 72%;
+  width: 44%;
+  height: 7%;
+  opacity: 0.85;
+}
+
+/* ── Временный переключатель экранов ───────────────────────────────────── */
+
+/* Живёт только до появления игрового цикла: без него второй экран не
+   посмотреть на телефоне. Удаляется вместе с M1. */
+.dev-switch {
+  position: fixed;
+  z-index: var(--z-overlay);
+  right: var(--space-3);
+  bottom: calc(env(safe-area-inset-bottom) + var(--space-3));
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--c-glass);
+  color: var(--c-glass-ink);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-semibold);
+  opacity: 0.5;
+}

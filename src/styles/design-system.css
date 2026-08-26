@@ -1,0 +1,202 @@
+/* Оформление стенда. Живёт отдельно от приложения и намеренно скучное:
+   стенд показывает систему, а не соревнуется с ней. Но значения берёт из тех
+   же токенов — стенд, нарисованный сырыми числами, врал бы о себе. */
+
+.ds-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + var(--space-8)) var(--gutter)
+    calc(env(safe-area-inset-bottom) + var(--space-16));
+}
+
+.ds-title {
+  margin: 0;
+  font-size: var(--text-display);
+  font-weight: var(--weight-black);
+  letter-spacing: var(--tracking-display);
+  line-height: var(--leading-tight);
+}
+
+.ds-sub {
+  margin: var(--space-2) 0 0;
+  color: var(--c-text-muted);
+}
+
+.ds-note {
+  margin: var(--space-6) 0 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
+  font-size: var(--text-small);
+  color: var(--c-text-muted);
+}
+
+.ds-section {
+  margin-top: var(--space-12);
+}
+
+.ds-section__title {
+  margin: 0;
+  font-size: var(--text-micro);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  color: var(--c-text-faint);
+}
+
+.ds-section__intro {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-small);
+  line-height: var(--leading-normal);
+  color: var(--c-text-muted);
+}
+
+.ds-table {
+  margin-top: var(--space-4);
+  border-top: var(--border-width) solid var(--c-border);
+}
+
+.ds-row {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-3) 0;
+  border-bottom: var(--border-width) solid var(--c-border);
+}
+
+.ds-sample {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--space-10);
+}
+
+/* Образец без содержимого — признак того, что токен переименовали,
+   а стенд об этом не знает. Помечаем явно, иначе строка выглядит нормальной. */
+.ds-chip {
+  width: var(--space-10);
+  height: var(--space-10);
+  border-radius: var(--radius-sm);
+  border: var(--border-width) solid var(--c-border);
+}
+
+.ds-chip--color {
+  /* Шахматка под полупрозрачными цветами: без неё --c-glass и rgba-текст
+     неотличимы от плотных. */
+  background-image: linear-gradient(45deg, var(--c-surface-sunken) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--c-surface-sunken) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--c-surface-sunken) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--c-surface-sunken) 75%);
+  background-size: 12px 12px;
+  background-position:
+    0 0,
+    0 6px,
+    6px -6px,
+    -6px 0;
+}
+
+.ds-chip--radius {
+  background: var(--c-accent-wash);
+  border-color: var(--c-accent);
+}
+
+.ds-bar {
+  height: var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--c-accent);
+}
+
+.ds-type {
+  font-weight: var(--weight-bold);
+  line-height: 1;
+}
+
+.ds-track {
+  position: relative;
+  width: var(--space-16);
+  height: var(--space-6);
+  border-radius: var(--radius-pill);
+  background: var(--c-surface-sunken);
+  cursor: pointer;
+}
+
+.ds-dot {
+  position: absolute;
+  top: var(--space-1);
+  left: var(--space-1);
+  width: var(--space-4);
+  height: var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--c-accent);
+  transition-property: transform;
+}
+
+.ds-track.is-end .ds-dot {
+  transform: translateX(calc(var(--space-16) - var(--space-6)));
+}
+
+.ds-hint {
+  font-size: var(--text-micro);
+  color: var(--c-text-faint);
+}
+
+.ds-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  min-width: 0;
+}
+
+.ds-name {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: var(--text-small);
+  font-weight: var(--weight-semibold);
+}
+
+.ds-value,
+.ds-raw {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: var(--text-micro);
+  color: var(--c-text-faint);
+  overflow-wrap: anywhere;
+}
+
+.ds-comment {
+  flex-basis: 100%;
+  font-size: var(--text-micro);
+  color: var(--c-text-muted);
+}
+
+/* ── Витрина примитивов ────────────────────────────────────────────────── */
+
+.ds-demo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  padding: var(--space-5);
+  border-radius: var(--radius-md);
+  border: var(--border-width) solid var(--c-border);
+}
+
+.ds-demo--sky {
+  background: var(--sky-gradient);
+  border-color: transparent;
+}
+
+.ds-demo__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Предмет на стенде: тот же размер и та же тень, что в игре, иначе стенд
+   показывал бы не то, что человек увидит. */
+.ds-object-demo {
+  width: var(--object-size, 84px);
+  height: var(--object-size, 84px);
+  filter: drop-shadow(var(--shadow-object));
+}
