@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mic Probe</title>
+
+<!-- iOS standalone -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MicProbe">
+<meta name="theme-color" content="#0e1116">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' fill='%230e1116'/%3E%3Ctext x='90' y='125' font-size='96' text-anchor='middle'%3E%F0%9F%8E%A4%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href='data:application/manifest+json,{"name":"Mic Probe","short_name":"MicProbe","start_url":".","display":"standalone","background_color":"%230e1116","theme_color":"%230e1116"}'>
+
+<style>
+  :root{
+    --bg:#0e1116; --card:#161b22; --line:#2a313c; --fg:#e6edf3; --dim:#8b949e;
+    --ok:#3fb950; --bad:#f85149; --warn:#d29922; --acc:#58a6ff;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 12px);
+    -webkit-text-size-adjust:100%;
+  }
+  h1{font-size:19px;margin:0 0 4px}
+  h2{font-size:15px;margin:0 0 10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
+  .row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:14px}
+  .row:last-child{border-bottom:0}
+  .row b{font-weight:600;color:var(--dim);flex:0 0 auto}
+  .row span{text-align:right;word-break:break-word;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
+  .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)} .dim{color:var(--dim)}
+  button{
+    -webkit-appearance:none; appearance:none; width:100%; margin:6px 0; padding:14px 16px;
+    background:#21262d; color:var(--fg); border:1px solid var(--line); border-radius:10px;
+    font-size:16px; font-weight:600; cursor:pointer; touch-action:manipulation;
+  }
+  button:active{background:#2d333b}
+  button.primary{background:var(--acc);border-color:var(--acc);color:#04101f}
+  button.danger{background:#3d1d1d;border-color:#5c2a2a;color:#ffb4ae}
+  button[disabled]{opacity:.45}
+  .btns2{display:flex;gap:8px}
+  .btns2 button{margin:6px 0}
+  #meter{height:12px;background:#0b0e13;border-radius:6px;overflow:hidden;margin:10px 0 4px;border:1px solid var(--line)}
+  #meterFill{height:100%;width:0;background:linear-gradient(90deg,var(--ok),var(--warn),var(--bad));transition:width .06s linear}
+  #heard{min-height:52px;font-size:22px;font-weight:700;padding:10px;background:#0b0e13;border-radius:8px;border:1px solid var(--line);word-break:break-word}
+  #heard .interim{color:var(--dim);font-weight:400}
+  #log{
+    background:#0b0e13;border:1px solid var(--line);border-radius:8px;padding:10px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.5;
+    height:280px;overflow:auto;white-space:pre-wrap;word-break:break-word;
+  }
+  .hint{color:var(--dim);font-size:13px;margin:6px 0 0}
+  audio{width:100%;margin-top:10px}
+</style>
+</head>
+<body>
+
+<h1>&#127908; Mic Probe</h1>
+<p class="hint">Порядок: открыть в Safari &rarr; прогнать всё &rarr; «Поделиться» &rarr; «На экран Домой» &rarr; открыть из иконки &rarr; прогнать всё заново &rarr; скопировать журнал.</p>
+
+<div class="card">
+  <h2>1. Окружение</h2>
+  <div id="env"></div>
+</div>
+
+<div class="card">
+  <h2>2. Наличие API</h2>
+  <div id="apis"></div>
+</div>
+
+<div class="card">
+  <h2>3. Распознавание речи</h2>
+  <div id="heard"><span class="dim">&mdash;</span></div>
+  <div class="btns2">
+    <button class="primary" id="srStart">Слушать</button>
+    <button class="danger" id="srStop" disabled>Стоп</button>
+  </div>
+  <label class="hint" style="display:flex;gap:8px;align-items:center;margin-top:8px">
+    <input type="checkbox" id="optContinuous" checked style="width:20px;height:20px">
+    continuous (сними, если ничего не приходит &mdash; iOS часто работает только по одной фразе)
+  </label>
+  <label class="hint" style="display:flex;gap:8px;align-items:center;margin-top:6px">
+    <input type="checkbox" id="optInterim" checked style="width:20px;height:20px">
+    interimResults
+  </label>
+  <label class="hint" style="display:flex;gap:8px;align-items:center;margin-top:6px">
+    <input type="checkbox" id="autoRestart" checked style="width:20px;height:20px">
+    авторестарт по onend (проверка обрывов continuous)
+  </label>
+  <p class="hint">Скажи по-английски: <b>ball, apple, tree, house, water</b>. Потом скажи что-нибудь по-русски &mdash; движок должен вернуть мусор.</p>
+  <p class="hint">Если висит тишина: на iPhone проверь <b>Настройки &rarr; Основные &rarr; Клавиатура &rarr; Включить диктовку</b>. Выключенная диктовка глушит распознавание молча.</p>
+</div>
+
+<div class="card">
+  <h2>4. getUserMedia + уровень сигнала</h2>
+  <div id="meter"><div id="meterFill"></div></div>
+  <div class="btns2">
+    <button class="primary" id="gumStart">Включить микрофон</button>
+    <button class="danger" id="gumStop" disabled>Стоп</button>
+  </div>
+  <div id="gumInfo"></div>
+</div>
+
+<div class="card">
+  <h2>5. MediaRecorder (запись 3 с)</h2>
+  <button id="recBtn">Записать 3 секунды</button>
+  <div id="recInfo"></div>
+  <audio id="player" controls playsinline style="display:none"></audio>
+</div>
+
+<div class="card">
+  <h2>6. Локальный движок / biasing</h2>
+  <button id="localBtn">Проверить on-device (Chromium)</button>
+  <button id="installBtn">Скачать языковой пакет en-US</button>
+  <div id="localInfo"></div>
+</div>
+
+<div class="card">
+  <h2>Журнал</h2>
+  <div id="log"></div>
+  <button class="primary" id="copyBtn">Скопировать журнал</button>
+  <button id="clearBtn">Очистить</button>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- лог ---------- */
+var logEl = document.getElementById('log');
+var t0 = Date.now();
+var lines = [];
+function log(msg, cls){
+  var t = ((Date.now()-t0)/1000).toFixed(2);
+  var line = '[' + t + '] ' + msg;
+  lines.push(line);
+  var d = document.createElement('div');
+  if(cls) d.className = cls;
+  d.textContent = line;
+  logEl.appendChild(d);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+window.addEventListener('error', function(e){ log('JS ERROR: ' + e.message + ' @' + e.lineno, 'bad'); });
+window.addEventListener('unhandledrejection', function(e){ log('UNHANDLED REJECTION: ' + e.reason, 'bad'); });
+
+function rows(target, list){
+  var el = document.getElementById(target);
+  el.innerHTML = '';
+  list.forEach(function(r){
+    var d = document.createElement('div'); d.className='row';
+    var b = document.createElement('b'); b.textContent = r[0];
+    var s = document.createElement('span'); s.textContent = r[1];
+    if(r[2]) s.className = r[2];
+    d.appendChild(b); d.appendChild(s); el.appendChild(d);
+  });
+}
+
+/* ---------- 1. окружение ---------- */
+var ua = navigator.userAgent;
+var mm = function(q){ return window.matchMedia && window.matchMedia(q).matches; };
+var displayMode = ['standalone','fullscreen','minimal-ui','browser'].filter(function(m){
+  return mm('(display-mode: ' + m + ')');
+}).join(', ') || 'нет данных';
+var iosStandalone = ('standalone' in navigator) ? navigator.standalone : null;
+var isStandalone = iosStandalone === true || mm('(display-mode: standalone)') || mm('(display-mode: fullscreen)');
+var iosVer = (ua.match(/OS (\d+)[_.](\d+)(?:[_.](\d+))?/) || []).slice(1).filter(Boolean).join('.') || '—';
+var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+rows('env', [
+  ['Режим запуска', isStandalone ? 'STANDALONE (с иконки)' : 'браузерная вкладка', isStandalone ? 'warn' : 'ok'],
+  ['navigator.standalone', String(iosStandalone)],
+  ['display-mode', displayMode],
+  ['iOS-подобное устройство', isIOS ? 'да' : 'нет'],
+  ['Версия ОС (из UA)', iosVer],
+  ['isSecureContext', String(window.isSecureContext), window.isSecureContext ? 'ok' : 'bad'],
+  ['origin', location.origin],
+  ['язык браузера', navigator.language + ' / ' + (navigator.languages||[]).join(',')],
+  ['UA', ua]
+]);
+log('=== MIC PROBE ===');
+log('mode=' + (isStandalone ? 'STANDALONE' : 'browser') + '  navigator.standalone=' + iosStandalone + '  display-mode=' + displayMode);
+log('secureContext=' + window.isSecureContext + '  origin=' + location.origin);
+log('UA=' + ua);
+if(!window.isSecureContext) log('ВНИМАНИЕ: не HTTPS — микрофон и распознавание работать не будут.', 'bad');
+
+/* ---------- 2. API ---------- */
+var SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+var hasGUM = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+var AC = window.AudioContext || window.webkitAudioContext || null;
+var hasMR = typeof window.MediaRecorder !== 'undefined';
+var hasPhrases = !!(SR && SR.prototype && 'phrases' in SR.prototype) || typeof window.SpeechRecognitionPhrase !== 'undefined';
+
+rows('apis', [
+  ['SpeechRecognition', SR ? (window.SpeechRecognition ? 'да (без префикса)' : 'да (webkit)') : 'НЕТ', SR ? 'ok' : 'bad'],
+  ['SpeechGrammarList', (window.SpeechGrammarList || window.webkitSpeechGrammarList) ? 'да' : 'нет', 'dim'],
+  ['contextual biasing (phrases)', hasPhrases ? 'да' : 'нет', hasPhrases ? 'ok' : 'dim'],
+  ['SR.available()', (SR && typeof SR.available === 'function') ? 'да' : 'нет', 'dim'],
+  ['getUserMedia', hasGUM ? 'да' : 'НЕТ', hasGUM ? 'ok' : 'bad'],
+  ['MediaRecorder', hasMR ? 'да' : 'НЕТ', hasMR ? 'ok' : 'bad'],
+  ['AudioContext', AC ? 'да' : 'НЕТ', AC ? 'ok' : 'bad'],
+  ['speechSynthesis', window.speechSynthesis ? 'да' : 'нет', window.speechSynthesis ? 'ok' : 'warn'],
+  ['serviceWorker', navigator.serviceWorker ? 'да' : 'нет', 'dim'],
+  ['permissions API', navigator.permissions ? 'да' : 'нет', 'dim']
+]);
+log('api: SR=' + !!SR + ' gUM=' + hasGUM + ' MediaRecorder=' + hasMR + ' AudioContext=' + !!AC + ' phrases=' + hasPhrases);
+
+if(navigator.permissions && navigator.permissions.query){
+  try{
+    navigator.permissions.query({name:'microphone'}).then(function(p){
+      log('permissions.microphone = ' + p.state);
+      p.onchange = function(){ log('permissions.microphone -> ' + p.state); };
+    })['catch'](function(e){ log('permissions.query(microphone) недоступно: ' + e.message, 'dim'); });
+  }catch(e){ log('permissions.query бросил: ' + e.message, 'dim'); }
+}
+
+/* ---------- 3. распознавание ---------- */
+var TARGETS = ['ball','apple','tree','house','water'];
+var rec = null, wantListening = false, sessionCount = 0, resultCount = 0;
+var gotStart = false, gotAudio = false, gotSpeech = false, watchdog = 0, sessionTs = 0;
+var heardEl = document.getElementById('heard');
+var srStart = document.getElementById('srStart'), srStop = document.getElementById('srStop');
+
+function setHeard(finalTxt, interimTxt){
+  heardEl.innerHTML = '';
+  if(finalTxt){ var f=document.createElement('span'); f.textContent = finalTxt + ' '; heardEl.appendChild(f); }
+  if(interimTxt){ var i=document.createElement('span'); i.className='interim'; i.textContent = interimTxt; heardEl.appendChild(i); }
+  if(!finalTxt && !interimTxt){ heardEl.innerHTML = '<span class="dim">&mdash;</span>'; }
+}
+
+function buildRec(){
+  var r = new SR();
+  r.lang = 'en-US';
+  r.continuous = document.getElementById('optContinuous').checked;
+  r.interimResults = document.getElementById('optInterim').checked;
+  r.maxAlternatives = 5;
+  // проверяем, что движок реально принял значения, а не проглотил
+  log('запрошено continuous=' + document.getElementById('optContinuous').checked +
+      ' interim=' + document.getElementById('optInterim').checked +
+      '; движок отдаёт continuous=' + r.continuous + ' interim=' + r.interimResults +
+      ' maxAlternatives=' + r.maxAlternatives);
+
+  // contextual biasing — если движок поддерживает
+  try{
+    if(typeof window.SpeechRecognitionPhrase !== 'undefined' && typeof window.SpeechRecognitionPhraseList !== 'undefined'){
+      r.phrases = new window.SpeechRecognitionPhraseList(TARGETS.map(function(w){
+        return new window.SpeechRecognitionPhrase(w, 2.0);
+      }));
+      log('phrases выставлены: ' + TARGETS.join(','), 'ok');
+    }
+  }catch(e){ log('phrases не приняты: ' + e.message, 'warn'); }
+
+  r.onstart = function(){ sessionCount++; gotStart = true; sessionTs = Date.now(); log('SR onstart (сессия #' + sessionCount + ')', 'ok'); };
+  r.onaudiostart  = function(){ gotAudio = true; log('SR onaudiostart'); };
+  r.onsoundstart  = function(){ log('SR onsoundstart'); };
+  r.onspeechstart = function(){ gotSpeech = true; log('SR onspeechstart'); };
+  r.onspeechend   = function(){ log('SR onspeechend'); };
+  r.onsoundend    = function(){ log('SR onsoundend'); };
+  r.onaudioend    = function(){ log('SR onaudioend'); };
+  r.onnomatch     = function(){ log('SR onnomatch', 'warn'); };
+
+  r.onerror = function(e){
+    var msg = 'SR ONERROR: ' + e.error + (e.message ? ' — ' + e.message : '');
+    log(msg, 'bad');
+    if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+      log('>>> ВЕРДИКТ: Web Speech API в этом режиме ЗАКРЫТ. Путь — getUserMedia + внешний движок.', 'bad');
+      wantListening = false;
+      setBtns(false);
+    }
+  };
+
+  r.onend = function(){
+    var dur = sessionTs ? ((Date.now()-sessionTs)/1000).toFixed(1) : '?';
+    log('SR onend — сессия #' + sessionCount + ' прожила ' + dur + ' с, результатов всего: ' + resultCount, 'warn');
+    if(wantListening && document.getElementById('autoRestart').checked){
+      setTimeout(function(){
+        if(!wantListening) return;
+        try{ r.start(); log('авторестарт'); }
+        catch(err){ log('авторестарт упал: ' + err.name + ' ' + err.message, 'bad'); }
+      }, 120);
+    } else {
+      setBtns(false);
+    }
+  };
+
+  r.onresult = function(e){
+    var finalTxt = '', interimTxt = '';
+    for(var i = e.resultIndex; i < e.results.length; i++){
+      var res = e.results[i];
+      resultCount++;
+      var alts = [];
+      for(var j = 0; j < res.length; j++){
+        var c = res[j].confidence;
+        alts.push('"' + res[j].transcript.trim() + '"' + (typeof c === 'number' ? '(' + c.toFixed(2) + ')' : '(—)'));
+      }
+      log((res.isFinal ? 'FINAL   ' : 'interim ') + '#' + i + ' alts=' + res.length + ': ' + alts.join('  '),
+          res.isFinal ? 'ok' : 'dim');
+
+      if(res.isFinal) finalTxt += res[0].transcript; else interimTxt += res[0].transcript;
+
+      // матч по закрытому словарю: любая альтернатива, любое слово
+      var hit = null;
+      for(var j2 = 0; j2 < res.length && !hit; j2++){
+        var words = res[j2].transcript.toLowerCase().replace(/[^a-z' ]/g,' ').split(/\s+/);
+        for(var k = 0; k < words.length; k++){
+          if(TARGETS.indexOf(words[k]) !== -1){ hit = words[k] + ' (альт. #' + j2 + ')'; break; }
+        }
+      }
+      if(hit) log('   >>> ПОПАДАНИЕ: ' + hit, 'ok');
+    }
+    setHeard(finalTxt, interimTxt);
+  };
+  return r;
+}
+
+function setBtns(on){ srStart.disabled = on; srStop.disabled = !on; }
+
+srStart.onclick = function(){
+  if(!SR){ log('SpeechRecognition отсутствует — нечего запускать', 'bad'); return; }
+  try{
+    rec = buildRec();
+    wantListening = true;
+    gotStart = false; gotAudio = false; gotSpeech = false; resultCount = 0;
+    rec.start();
+    setBtns(true);
+    log('SR.start() вызван, ждём событий…');
+
+    // сторож: если через 6 секунд тишина — назвать вероятные причины прямо в журнале
+    clearTimeout(watchdog);
+    watchdog = setTimeout(function(){
+      if(!wantListening) return;
+      if(resultCount > 0) return;
+      log('--- СТОРОЖ: 6 с, ни одного результата ---', 'warn');
+      log('onstart=' + gotStart + ' onaudiostart=' + gotAudio + ' onspeechstart=' + gotSpeech + ' результатов=' + resultCount, 'warn');
+      if(gotStart && gotAudio && !gotSpeech){
+        log('вывод: движок жив, но речи он пока не слышал. Скажи слово громче и ближе к телефону — это не ошибка.', 'warn');
+      } else if(!gotStart){
+        log('вывод: SR даже не стартовал — API есть, но движок не поднялся (типично для standalone на iOS)', 'bad');
+      } else if(!gotAudio){
+        log('вывод: SR стартовал, но микрофон к нему не подключился. Проверь блок 4: если getUserMedia работает, а сюда звук не идёт — это баг iOS.', 'bad');
+      } else {
+        log('вывод: звук идёт, но распознавание молчит. Причины по убыванию вероятности:', 'warn');
+        log('  1) выключена диктовка в настройках iPhone;', 'warn');
+        log('  2) continuous=true не поддержан — сними галочку и повтори;', 'warn');
+        log('  3) нет интернета у движка (на iOS распознавание может ходить на сервер).', 'warn');
+      }
+    }, 6000);
+  }catch(e){ log('SR.start() бросил: ' + e.name + ' — ' + e.message, 'bad'); setBtns(false); }
+};
+srStop.onclick = function(){
+  wantListening = false;
+  try{ if(rec) rec.stop(); }catch(e){ log('SR.stop() бросил: ' + e.message, 'warn'); }
+  setBtns(false);
+  log('остановлено вручную');
+};
+
+/* ---------- 4. getUserMedia ---------- */
+var stream = null, actx = null, raf = 0;
+var fill = document.getElementById('meterFill');
+document.getElementById('gumStart').onclick = function(){
+  if(!hasGUM){ log('getUserMedia отсутствует', 'bad'); return; }
+  log('getUserMedia({audio:true}) …');
+  navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true}})
+  .then(function(s){
+    stream = s;
+    var tr = s.getAudioTracks()[0];
+    var st = {}; try{ st = tr.getSettings ? tr.getSettings() : {}; }catch(e){}
+    log('getUserMedia OK: label="' + (tr.label||'(пусто)') + '" state=' + tr.readyState, 'ok');
+    log('track settings: ' + JSON.stringify(st));
+    rows('gumInfo', [
+      ['label', tr.label || '(пусто)'],
+      ['readyState', tr.readyState, 'ok'],
+      ['sampleRate', String(st.sampleRate || '—')],
+      ['channelCount', String(st.channelCount || '—')],
+      ['deviceId', (st.deviceId||'—').slice(0,16)]
+    ]);
+    tr.onended = function(){ log('audio track ended', 'warn'); };
+    tr.onmute  = function(){ log('audio track MUTED', 'warn'); };
+    tr.onunmute= function(){ log('audio track unmuted', 'ok'); };
+
+    if(AC){
+      actx = new AC();
+      if(actx.state === 'suspended'){ actx.resume().then(function(){ log('AudioContext resumed'); }); }
+      log('AudioContext state=' + actx.state + ' sampleRate=' + actx.sampleRate);
+      var src = actx.createMediaStreamSource(s);
+      var an = actx.createAnalyser(); an.fftSize = 1024;
+      src.connect(an);
+      var buf = new Uint8Array(an.fftSize);
+      var peak = 0;
+      (function loop(){
+        an.getByteTimeDomainData(buf);
+        var sum = 0;
+        for(var i=0;i<buf.length;i++){ var v=(buf[i]-128)/128; sum += v*v; }
+        var rms = Math.sqrt(sum/buf.length);
+        if(rms > peak) peak = rms;
+        fill.style.width = Math.min(100, rms*300) + '%';
+        raf = requestAnimationFrame(loop);
+      })();
+      setTimeout(function(){ log('пиковый RMS за 5 с: ' + peak.toFixed(4) + (peak < 0.005 ? ' — ТИШИНА, сигнала нет' : ' — сигнал есть'), peak < 0.005 ? 'bad' : 'ok'); }, 5000);
+    }
+    document.getElementById('gumStart').disabled = true;
+    document.getElementById('gumStop').disabled = false;
+  })['catch'](function(e){
+    log('getUserMedia ОШИБКА: ' + e.name + ' — ' + e.message, 'bad');
+    if(e.name === 'NotAllowedError') log('>>> микрофон запрещён в этом режиме запуска', 'bad');
+  });
+};
+document.getElementById('gumStop').onclick = function(){
+  if(raf) cancelAnimationFrame(raf);
+  fill.style.width = '0';
+  if(stream) stream.getTracks().forEach(function(t){ t.stop(); });
+  if(actx) { try{ actx.close(); }catch(e){} actx = null; }
+  stream = null;
+  document.getElementById('gumStart').disabled = false;
+  document.getElementById('gumStop').disabled = true;
+  log('микрофон отпущен');
+};
+
+/* ---------- 5. MediaRecorder ---------- */
+/* Перебираем ВСЕ заявленные форматы по очереди и меряем реальный размер.
+   isTypeSupported врёт: Safari отвечает true на webm, а пишет пустой заголовок. */
+document.getElementById('recBtn').onclick = function(){
+  if(!hasMR){ log('MediaRecorder отсутствует', 'bad'); return; }
+  var btn = this; btn.disabled = true;
+
+  var candidates = ['audio/mp4','audio/mp4;codecs=mp4a.40.2','audio/aac',
+                    'audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus',''];
+  var queue = candidates.filter(function(m){
+    return m === '' || (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m));
+  });
+  log('заявлено поддерживаемыми: ' + (queue.filter(Boolean).join(', ') || '(только дефолтный)'));
+  log('пишу по 2 с на каждый формат — говори что-нибудь не переставая');
+
+  var results = [];
+  var best = null;
+
+  function finish(){
+    rows('recInfo', results.map(function(r){
+      return [r.mime || '(дефолт)', r.size + ' байт', r.size > 1000 ? 'ok' : 'bad'];
+    }).concat([
+      best ? ['рабочий формат', best.mime || '(дефолт)', 'ok']
+           : ['вердикт', 'ни один формат не пишет звук', 'bad']
+    ]));
+    if(best){
+      log('>>> рабочий формат: ' + (best.mime || '(дефолт)') + ', ' + best.size + ' байт', 'ok');
+      var p = document.getElementById('player');
+      p.src = URL.createObjectURL(best.blob); p.style.display = 'block';
+    } else {
+      log('>>> MediaRecorder не пишет звук ни в одном формате', 'bad');
+    }
+    btn.disabled = false; btn.textContent = 'Записать 3 секунды';
+  }
+
+  function step(i){
+    if(i >= queue.length){ finish(); return; }
+    var mime = queue[i];
+    btn.textContent = 'Пишу ' + (mime || 'дефолт') + '…';
+    navigator.mediaDevices.getUserMedia({audio:true}).then(function(s){
+      var mr;
+      try{ mr = mime ? new MediaRecorder(s, {mimeType:mime}) : new MediaRecorder(s); }
+      catch(e){
+        log(mime + ': конструктор упал — ' + e.message, 'bad');
+        s.getTracks().forEach(function(t){ t.stop(); });
+        results.push({mime:mime, size:0}); step(i+1); return;
+      }
+      var chunks = [];
+      mr.ondataavailable = function(ev){ if(ev.data && ev.data.size) chunks.push(ev.data); };
+      mr.onerror = function(ev){ log(mime + ': onerror ' + (ev.error && ev.error.name), 'bad'); };
+      mr.onstop = function(){
+        s.getTracks().forEach(function(t){ t.stop(); });
+        var blob = new Blob(chunks, {type: mr.mimeType || mime || 'application/octet-stream'});
+        var ok = blob.size > 1000;
+        log((ok ? '  OK   ' : '  ПУСТО') + '  запрошено="' + (mime||'(дефолт)') +
+            '" отдано="' + mr.mimeType + '" → ' + blob.size + ' байт', ok ? 'ok' : 'bad');
+        results.push({mime:mime, size:blob.size, blob:blob});
+        if(ok && !best) best = {mime:mr.mimeType || mime, size:blob.size, blob:blob};
+        step(i+1);
+      };
+      mr.start(500);
+      setTimeout(function(){ if(mr.state !== 'inactive') mr.stop(); }, 2000);
+    })['catch'](function(e){
+      log('getUserMedia ОШИБКА ' + e.name + ' — ' + e.message, 'bad');
+      results.push({mime:mime, size:0});
+      finish();
+    });
+  }
+  step(0);
+};
+
+/* ---------- 6. локальный движок ---------- */
+document.getElementById('localBtn').onclick = function(){
+  if(!SR){ log('SpeechRecognition нет — on-device проверить нельзя', 'bad'); return; }
+  var out = [];
+  out.push(['SR.available', typeof SR.available === 'function' ? 'есть' : 'нет', typeof SR.available==='function'?'ok':'dim']);
+  out.push(['SR.install', typeof SR.install === 'function' ? 'есть' : 'нет', 'dim']);
+  out.push(['processLocally в prototype', ('processLocally' in SR.prototype) ? 'да' : 'нет', 'dim']);
+  out.push(['SpeechRecognitionPhrase', typeof window.SpeechRecognitionPhrase !== 'undefined' ? 'да' : 'нет', 'dim']);
+  rows('localInfo', out);
+  log('on-device: available=' + (typeof SR.available==='function') + ' install=' + (typeof SR.install==='function') + ' processLocally=' + ('processLocally' in SR.prototype));
+  if(typeof SR.available === 'function'){
+    try{
+      Promise.resolve(SR.available({langs:['en-US'], processLocally:true})).then(function(r){
+        log('SR.available({en-US, processLocally:true}) = ' + r, r === 'available' ? 'ok' : 'warn');
+      })['catch'](function(e){ log('SR.available бросил: ' + e.message, 'warn'); });
+    }catch(e){ log('SR.available синхронно бросил: ' + e.message, 'warn'); }
+  }
+};
+document.getElementById('installBtn').onclick = function(){
+  if(!SR || typeof SR.install !== 'function'){ log('SR.install недоступен в этом браузере', 'warn'); return; }
+  log('SR.install({en-US, processLocally:true}) …');
+  Promise.resolve(SR.install({langs:['en-US'], processLocally:true}))
+    .then(function(r){ log('SR.install => ' + r, 'ok'); })
+    ['catch'](function(e){ log('SR.install ошибка: ' + e.message, 'bad'); });
+};
+
+/* ---------- копирование ---------- */
+document.getElementById('copyBtn').onclick = function(){
+  var txt = lines.join('\n');
+  var btn = this;
+  function done(ok){ btn.textContent = ok ? '✓ Скопировано' : 'Не вышло — выдели вручную'; setTimeout(function(){ btn.textContent='Скопировать журнал'; }, 1800); }
+  function fallback(){
+    var ta = document.createElement('textarea');
+    ta.value = txt; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    ta.setSelectionRange(0, txt.length);
+    var ok = false; try{ ok = document.execCommand('copy'); }catch(e){}
+    document.body.removeChild(ta); done(ok);
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){ done(true); })['catch'](function(){ fallback(); });
+  } else fallback();
+};
+document.getElementById('clearBtn').onclick = function(){ lines = []; logEl.innerHTML = ''; t0 = Date.now(); log('журнал очищен'); };
+
+document.addEventListener('visibilitychange', function(){ log('visibility -> ' + document.visibilityState, 'dim'); });
+
+})();
+</script>
+</body>
+</html>
