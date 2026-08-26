@@ -398,20 +398,81 @@ svg {
   opacity: 0.85;
 }
 
-/* ── Временный переключатель экранов ───────────────────────────────────── */
+/* ── Стартовый экран ───────────────────────────────────────────────────── */
 
-/* Живёт только до появления игрового цикла: без него второй экран не
-   посмотреть на телефоне. Удаляется вместе с M1. */
-.dev-switch {
-  position: fixed;
-  z-index: var(--z-overlay);
-  right: var(--space-3);
-  bottom: calc(env(safe-area-inset-bottom) + var(--space-3));
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-pill);
-  background: var(--c-glass);
-  color: var(--c-glass-ink);
-  font-size: var(--text-micro);
-  font-weight: var(--weight-semibold);
-  opacity: 0.5;
+.start__hero {
+  position: relative;
+  z-index: var(--z-content, 10);
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
+
+/* Предметы стоят внахлёст и покачиваются: за секунду до первого касания видно,
+   чем игра занимается, без единого слова объяснений. */
+.start__objects {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--space-8);
+}
+
+.start__object {
+  width: 96px;
+  height: 96px;
+  filter: drop-shadow(var(--shadow-object));
+}
+
+.start__object:nth-child(1) {
+  transform: rotate(-8deg);
+  margin-right: calc(var(--space-6) * -1);
+}
+
+.start__object:nth-child(2) {
+  width: 116px;
+  height: 116px;
+  z-index: 1;
+}
+
+.start__object:nth-child(3) {
+  transform: rotate(8deg);
+  margin-left: calc(var(--space-6) * -1);
+}
+
+.start__title {
+  margin: 0;
+  font-size: var(--text-display);
+  font-weight: var(--weight-black);
+  letter-spacing: var(--tracking-display);
+  line-height: var(--leading-tight);
+  color: var(--c-glass-ink);
+}
+
+.start__sub {
+  margin: var(--space-3) auto 0;
+  max-width: var(--measure);
+  font-size: var(--text-lead);
+  line-height: var(--leading-normal);
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.start__foot {
+  position: relative;
+  z-index: var(--z-content, 10);
+  flex: 0 0 auto;
+}
+
+.start__note {
+  margin: var(--space-4) auto 0;
+  max-width: var(--measure);
+  font-size: var(--text-small);
+  line-height: var(--leading-normal);
+  color: rgba(255, 255, 255, 0.68);
+  text-align: center;
+}
+
+/* Кнопка на небе не нуждается в цветной заливке для заметности — вокруг и так
+   нет ничего конкурирующего. Но акцент оставлен: он связывает стартовый экран
+   с экраном проигрыша, где та же кнопка живёт на белом. */

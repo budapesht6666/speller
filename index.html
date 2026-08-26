@@ -18,8 +18,41 @@
     <link rel="manifest" href="/manifest.webmanifest" />
   </head>
   <body>
+    <!-- ── Стартовый экран ───────────────────────────────────────────────────
+         Не заставка. Микрофон в Safari выдаётся только по жесту пользователя,
+         поэтому кнопка «Играть» — обязательная часть механики: без касания
+         распознавание не запустить в принципе. -->
+    <main class="screen screen--sky" id="screen-start">
+      <div class="clouds" aria-hidden="true">
+        <span class="cloud cloud--1"></span>
+        <span class="cloud cloud--2"></span>
+        <span class="cloud cloud--3"></span>
+        <span class="cloud cloud--4"></span>
+      </div>
+
+      <div class="start__hero">
+        <div class="start__objects" aria-hidden="true">
+          <img class="start__object" src="/assets/objects/burger.svg" alt="" />
+          <img class="start__object" src="/assets/objects/ball.svg" alt="" />
+          <img class="start__object" src="/assets/objects/tree-1.svg" alt="" />
+        </div>
+        <h1 class="start__title">Speller</h1>
+        <p class="start__sub">
+          Предметы падают. Назови их вслух по-английски — и они разлетаются.
+          Упустишь один — раунд окончен.
+        </p>
+      </div>
+
+      <div class="start__foot">
+        <button class="btn btn--cta" type="button" id="start-play">Играть</button>
+        <p class="start__note" id="start-note">
+          Нужен микрофон и интернет: распознавание работает на сервере.
+        </p>
+      </div>
+    </main>
+
     <!-- ── Игровой экран ─────────────────────────────────────────────────── -->
-    <main class="screen screen--sky" id="screen-play">
+    <main class="screen screen--sky" id="screen-play" hidden>
       <div class="clouds" aria-hidden="true">
         <span class="cloud cloud--1"></span>
         <span class="cloud cloud--2"></span>
@@ -28,7 +61,7 @@
       </div>
 
       <header class="hud">
-        <button class="glass glass--round" type="button" aria-label="Назад">
+        <button class="glass glass--round" type="button" id="quit" aria-label="Выйти">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
             <path
               d="M15 5 8 12l7 7"
@@ -42,26 +75,22 @@
 
         <span class="glass">
           <img src="/assets/objects/target-3.svg" width="20" height="20" alt="" />
-          <span class="score" id="score">30</span>
+          <span class="score" id="score">0</span>
         </span>
 
-        <span class="glass glass--round">
+        <span class="glass glass--round" aria-hidden="true">
           <img src="/assets/objects/dog-1.svg" width="24" height="24" alt="" />
         </span>
       </header>
 
-      <div class="field" id="field">
-        <!-- Предметы в полёте. В M1 расставлены статикой, чтобы утвердить вид;
-             в M2 их ставит игровой цикл. -->
-        <img class="object" src="/assets/objects/burger.svg" alt="burger" style="left: 22%; top: 26%" />
-        <img class="object" src="/assets/objects/ball.svg" alt="ball" style="left: 58%; top: 47%" />
-        <img class="object" src="/assets/objects/tree-1.svg" alt="tree" style="left: 30%; top: 66%" />
-      </div>
+      <!-- Предметы создаёт игровой цикл; линия внизу — граница, ниже которой
+           предмет считается упущенным. -->
+      <div class="field" id="field"></div>
 
       <footer class="hud-foot">
-        <span class="glass listening" id="listening">
+        <span class="glass listening" id="listening" data-state="off">
           <span class="listening__dot"></span>
-          Слушаю…
+          <span id="listening-text">Включаю микрофон…</span>
         </span>
       </footer>
     </main>
@@ -81,17 +110,17 @@
           <div class="stat">
             <img class="stat__icon" src="/assets/ui/circle-clock.svg" alt="" />
             <div class="stat__label">Время</div>
-            <div class="stat__value" id="stat-time">0:32</div>
+            <div class="stat__value" id="stat-time">0:00</div>
           </div>
           <div class="stat">
             <img class="stat__icon" src="/assets/objects/target-3.svg" alt="" />
             <div class="stat__label">Очки</div>
-            <div class="stat__value" id="stat-score">60</div>
+            <div class="stat__value" id="stat-score">0</div>
           </div>
           <div class="stat">
             <img class="stat__icon" src="/assets/ui/check-thick.svg" alt="" />
             <div class="stat__label">Слова</div>
-            <div class="stat__value" id="stat-words">12</div>
+            <div class="stat__value" id="stat-words">0</div>
           </div>
         </div>
 
@@ -116,13 +145,9 @@
           </div>
         </div>
 
-        <button class="btn btn--cta" type="button" id="again">Готово</button>
+        <button class="btn btn--cta" type="button" id="again">Ещё раз</button>
       </div>
     </main>
-
-    <!-- Переключатель экранов. Существует только пока игрового цикла нет:
-         без него второй экран не посмотреть на телефоне. Уходит в M2. -->
-    <button class="dev-switch" type="button" id="dev-switch">Экран ⇄</button>
 
     <script type="module" src="/src/main.ts"></script>
   </body>
