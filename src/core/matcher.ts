@@ -2,7 +2,7 @@
  * Сопоставление услышанного с падающими словами.
  *
  * Задача не «распознать речь», а закрытый словарь: на экране 1–5 известных
- * слов, надо понять, названо ли одно из них. Это делает возможным фонетическое
+ * слов, надо понять, названо ли одно из них. Это делает возможным мягкое
  * сравнение — ошибиться в пользу одного из пяти вариантов гораздо труднее,
  * чем угадать слово из всего языка.
  *
@@ -52,6 +52,87 @@ export const DEFAULT_CONFIG: MatchConfig = {
   minCodeLength: 2,
 };
 
+/**
+ * Правила сравнения для одного языка.
+ *
+ * Три вещи различаются от языка к языку, и все три ломают сравнение, если их
+ * не развести:
+ *
+ * - **Письмо.** `[^a-z]` выбрасывает кириллицу и вьетнамскую диакритику
+ *   целиком, превращая расшифровку в пустую строку. Ровно это и происходило,
+ *   пока язык был один.
+ * - **Фонетика.** Double Metaphone — алгоритм английского произношения.
+ *   На русском или вьетнамском он не «работает хуже», он не значит ничего,
+ *   поэтому там его нет и решение принимает Левенштейн.
+ * - **Длина выражения.** По-английски подпись занимает одно-два слова, редко
+ *   три (`hot air balloon`), по-вьетнамски спокойно четыре
+ *   (`trung tâm thương mại`), и окно поиска обязано до них дотягиваться.
+ *   Окно короче самой длинной подписи означает слово, которое нельзя сбить
+ *   никогда, — это проверяется тестом.
+ */
+export interface MatchProfile extends MatchConfig {
+  id: 'en' | 'ru' | 'vi';
+  /** Сравнивать ли фонетические коды. Только для английского. */
+  phonetic: boolean;
+  /** Сколько слов подряд склеивать в поисках подписи из нескольких слов. */
+  maxWindow: number;
+  /** Что выбросить из строки после свёртки: всё, кроме букв этого письма. */
+  strip: RegExp;
+  /** Свёртка письма к сравнимому виду. */
+  fold: (text: string) => string;
+}
+
+/**
+ * Вьетнамский сравниваем без тонов.
+ *
+ * Тон — часть слова, и `ma`, `má`, `mà` разные слова. Но распознавание ставит
+ * тоны заметно менее уверенно, чем сами слоги, а кандидатов на экране пять:
+ * отбрасывать верно названное слово из-за неверно услышанного тона — худший
+ * обмен. Неразличимые после свёртки пары разводит collidingWords, ровно как
+ * английские ball / bowl.
+ *
+ * `đ` не раскладывается по NFD (это отдельная буква, а не `d` со знаком),
+ * поэтому её приходится заменять руками.
+ */
+function foldVietnamese(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd');
+}
+
+/** Ё и Е распознавание путает свободно, а слово это одно и то же. */
+function foldRussian(text: string): string {
+  return text.replace(/ё/g, 'е');
+}
+
+export const PROFILES: Record<'en' | 'ru' | 'vi', MatchProfile> = {
+  en: {
+    ...DEFAULT_CONFIG,
+    id: 'en',
+    phonetic: true,
+    maxWindow: 3,
+    strip: /[^a-z\s]+/g,
+    fold: (text) => text,
+  },
+  ru: {
+    ...DEFAULT_CONFIG,
+    id: 'ru',
+    phonetic: false,
+    maxWindow: 2,
+    strip: /[^а-я\s]+/g,
+    fold: foldRussian,
+  },
+  vi: {
+    ...DEFAULT_CONFIG,
+    id: 'vi',
+    phonetic: false,
+    maxWindow: 4,
+    strip: /[^a-z\s]+/g,
+    fold: foldVietnamese,
+  },
+};
+
 export interface Target<T> {
   id: T;
   /** Все слова, которые засчитываются: основное плюс синонимы. */
@@ -68,14 +149,24 @@ export interface Hit<T> {
   how: 'exact' | 'phonetic' | 'fuzzy';
 }
 
-/** Разбирает расшифровку на слова: нижний регистр, без пунктуации и цифр. */
-export function normalize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .replace(/['’]/g, '')
-    .replace(/[^a-z\s]+/g, ' ')
+/**
+ * Разбирает расшифровку на слова: нижний регистр, свёртка письма, без
+ * пунктуации и цифр.
+ *
+ * Порядок важен: свёртка идёт до выбрасывания лишнего. Иначе вьетнамские
+ * надстрочные знаки уходят вместе со своими буквами, а не отдельно от них.
+ */
+export function normalize(text: string, profile: MatchProfile = PROFILES.en): string[] {
+  return profile
+    .fold(text.toLowerCase().replace(/['’]/g, ''))
+    .replace(profile.strip, ' ')
     .split(/\s+/)
     .filter(Boolean);
+}
+
+/** Ожидаемая подпись в том же виде, в каком приходит расшифровка. */
+function normalizeExpected(word: string, profile: MatchProfile): string {
+  return normalize(word, profile).join(' ');
 }
 
 /** Расстояние Левенштейна. Своё, потому что это десять строк. */
@@ -115,16 +206,18 @@ function allowedDistance(word: string, config: MatchConfig): number {
 export function compare(
   spoken: string,
   expected: string,
-  config: MatchConfig = DEFAULT_CONFIG,
+  profile: MatchProfile = PROFILES.en,
 ): Hit<unknown>['how'] | null {
   if (!spoken || !expected) return null;
   if (spoken === expected) return 'exact';
 
-  const spokenCodes = codes(spoken, config.minCodeLength);
-  const expectedCodes = codes(expected, config.minCodeLength);
-  if (spokenCodes.some((c) => expectedCodes.includes(c))) return 'phonetic';
+  if (profile.phonetic) {
+    const spokenCodes = codes(spoken, profile.minCodeLength);
+    const expectedCodes = codes(expected, profile.minCodeLength);
+    if (spokenCodes.some((c) => expectedCodes.includes(c))) return 'phonetic';
+  }
 
-  const limit = allowedDistance(expected, config);
+  const limit = allowedDistance(expected, profile);
   if (limit > 0 && levenshtein(spoken, expected) <= limit) return 'fuzzy';
 
   return null;
@@ -133,8 +226,9 @@ export function compare(
 /**
  * Ищет попадания в расшифровке.
  *
- * Проверяются окна в одно и два слова: часть подписей — из двух слов
- * (`ice cream`), а движок к тому же охотно режет одно слово надвое.
+ * Проверяются окна от одного слова до `maxWindow`: часть подписей состоит из
+ * нескольких слов (`ice cream`, `nhà vệ sinh`), а движок к тому же охотно
+ * режет одно слово надвое.
  *
  * Возвращаются все попадания, а не первое: за одно событие человек успевает
  * назвать два предмета, и терять второе нельзя.
@@ -142,39 +236,43 @@ export function compare(
 export function findHits<T>(
   words: string[],
   targets: Target<T>[],
-  config: MatchConfig = DEFAULT_CONFIG,
+  profile: MatchProfile = PROFILES.en,
 ): Hit<T>[] {
   const hits: Hit<T>[] = [];
   const taken = new Set<T>();
 
   for (let i = 0; i < words.length; i++) {
-    const windows: Array<{ text: string; end: number }> = [{ text: words[i]!, end: i }];
-    if (i + 1 < words.length) {
-      windows.push({ text: `${words[i]} ${words[i + 1]}`, end: i + 1 });
+    const windows: Array<{ text: string; end: number }> = [];
+    for (let n = 0; n < profile.maxWindow && i + n < words.length; n++) {
+      windows.push({ text: words.slice(i, i + n + 1).join(' '), end: i + n });
     }
 
     for (const target of targets) {
       if (taken.has(target.id)) continue;
+
+      let found: { how: Hit<T>['how']; end: number } | null = null;
       for (const expected of target.words) {
-        const wanted = expected.toLowerCase();
-        // Двухсловное окно сравниваем и как есть, и слитно: `ice cream`
+        const wanted = normalizeExpected(expected, profile);
+        if (!wanted) continue;
+        // Многословное окно сравниваем и как есть, и слитно: `ice cream`
         // приходит то одним словом, то двумя.
         const joined = wanted.replace(/\s+/g, '');
-        let how: Hit<T>['how'] | null = null;
-        let end = i;
-        for (const w of windows) {
-          how =
-            compare(w.text, wanted, config) ?? compare(w.text.replace(/\s+/g, ''), joined, config);
+        for (const window of windows) {
+          const how =
+            compare(window.text, wanted, profile) ??
+            compare(window.text.replace(/\s+/g, ''), joined, profile);
           if (how) {
-            end = w.end;
+            found = { how, end: window.end };
             break;
           }
         }
-        if (how) {
-          hits.push({ id: target.id, wordStart: i, wordEnd: end, how });
-          taken.add(target.id);
-          break;
-        }
+        if (found) break;
+      }
+
+      if (found) {
+        hits.push({ id: target.id, wordStart: i, wordEnd: found.end, how: found.how });
+        taken.add(target.id);
+        break;
       }
     }
   }
@@ -192,7 +290,7 @@ export function findHits<T>(
  */
 export function collidingWords(
   vocabulary: Array<{ id: string; words: string[] }>,
-  config: MatchConfig = DEFAULT_CONFIG,
+  profile: MatchProfile = PROFILES.en,
 ): Map<string, Set<string>> {
   const map = new Map<string, Set<string>>();
   const link = (a: string, b: string) => {
@@ -200,13 +298,16 @@ export function collidingWords(
     map.get(a)!.add(b);
   };
 
-  for (let i = 0; i < vocabulary.length; i++) {
-    for (let j = i + 1; j < vocabulary.length; j++) {
-      const a = vocabulary[i]!;
-      const b = vocabulary[j]!;
-      const clash = a.words.some((wa) =>
-        b.words.some((wb) => compare(wa.toLowerCase(), wb.toLowerCase(), config) !== null),
-      );
+  const prepared = vocabulary.map((entry) => ({
+    id: entry.id,
+    words: entry.words.map((w) => normalizeExpected(w, profile)).filter(Boolean),
+  }));
+
+  for (let i = 0; i < prepared.length; i++) {
+    for (let j = i + 1; j < prepared.length; j++) {
+      const a = prepared[i]!;
+      const b = prepared[j]!;
+      const clash = a.words.some((wa) => b.words.some((wb) => compare(wa, wb, profile) !== null));
       if (clash) {
         link(a.id, b.id);
         link(b.id, a.id);
@@ -234,6 +335,14 @@ export class Utterance {
   private consumed = new Set<number>();
   private segment = -1;
 
+  constructor(private profile: MatchProfile = PROFILES.en) {}
+
+  /** Смена языка обучения: старый хвост разобран не тем письмом. */
+  useProfile(profile: MatchProfile): void {
+    this.profile = profile;
+    this.reset();
+  }
+
   /**
    * Слова, ещё не закрытые попаданием. Возвращаются вместе с исходными
    * позициями: без них вызывающий не сможет сказать, что именно закрывать.
@@ -243,7 +352,7 @@ export class Utterance {
       this.segment = segmentIndex;
       this.consumed.clear();
     }
-    const all = normalize(transcript);
+    const all = normalize(transcript, this.profile);
     const words: string[] = [];
     const positions: number[] = [];
     for (let i = 0; i < all.length; i++) {

@@ -16,13 +16,98 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- ── Критический стиль ────────────────────────────────────────────────
+         Единственное место, где значения написаны вручную, а не взяты из
+         tokens.css, и на то есть причина: этот блок работает до того, как
+         таблица стилей загружена, а в разработке Vite вставляет её вообще
+         скриптом. Без него первый кадр показывает всё сразу: три экрана
+         подряд и картинки в натуральную величину — SVG набора идут без
+         width/height, и браузер рисует их в 300×150.
+
+         Отсюда и правило: у каждой картинки в этом файле проставлены
+         width и height. Это не «на всякий случай», это и есть починка.
+
+         Цвет продублирован с --c-sky-1 и с theme-color выше; трогая один,
+         правьте все три. -->
+    <style>
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #3878e0;
+      }
+      [hidden] {
+        display: none;
+      }
+
+      /* Заставка загрузки. Единственный элемент, который обязан быть описан
+         здесь целиком: он работает ровно в тот промежуток, когда таблицы
+         стилей ещё нет. Ссылаться из него на токены не на что.
+
+         Она закрывает не «долгую загрузку», а перестройку интерфейса: до
+         первого кадра неизвестен язык, поэтому в разметке лежат русские
+         строки, кнопки языков собираются скриптом, а Nunito приезжает
+         отдельным файлом. Без заставки человек видит, как текст на его глазах
+         меняет язык и прыгает по ширине. */
+      #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #3878e0;
+      }
+
+      /* Кружок не появляется мгновенно: при быстрой загрузке он мигнул бы на
+         один кадр и сам стал бы тем мельканием, ради которого всё затевалось.
+         Поэтому он проявляется только через 0.4 с — то есть тогда, когда
+         ожидание действительно есть. */
+      #boot::after {
+        content: '';
+        width: 28px;
+        height: 28px;
+        border: 3px solid rgba(255, 255, 255, 0.28);
+        border-top-color: #ffffff;
+        border-radius: 50%;
+        opacity: 0;
+        animation:
+          boot-spin 0.8s linear infinite,
+          boot-appear 0.3s ease 0.4s forwards;
+      }
+
+      @keyframes boot-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes boot-appear {
+        to {
+          opacity: 1;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #boot::after {
+          animation: boot-appear 0.3s ease 0.4s forwards;
+        }
+      }
+    </style>
   </head>
-  <body>
+  <body data-screen="start">
+    <!-- Снимается скриптом, когда интерфейс собран и шрифт готов. -->
+    <div id="boot" aria-hidden="true"></div>
+
     <!-- ── Стартовый экран ───────────────────────────────────────────────────
          Не заставка. Микрофон в Safari выдаётся только по жесту пользователя,
          поэтому кнопка «Играть» — обязательная часть механики: без касания
          распознавание не запустить в принципе. -->
-    <main class="screen screen--sky" id="screen-start">
+    <main class="screen screen--sky screen--scroll" id="screen-start">
       <div class="clouds" aria-hidden="true">
         <span class="cloud cloud--1"></span>
         <span class="cloud cloud--2"></span>
@@ -30,22 +115,43 @@
         <span class="cloud cloud--4"></span>
       </div>
 
+      <!-- Язык интерфейса. Стоит на стартовом экране и только здесь: посреди
+           раунда его не меняют, а лишняя кнопка в игровой шапке отнимает место
+           у того, что там действительно нужно. -->
+      <header class="start__top">
+        <div
+          class="seg"
+          role="radiogroup"
+          id="ui-langs"
+          data-i18n-aria="start.uiLang"
+          aria-label="Язык интерфейса"
+        ></div>
+      </header>
+
       <div class="start__hero">
         <div class="start__objects" aria-hidden="true">
-          <img class="start__object" src="/assets/objects/burger.svg" alt="" />
-          <img class="start__object" src="/assets/objects/ball.svg" alt="" />
-          <img class="start__object" src="/assets/objects/tree-1.svg" alt="" />
+          <img class="start__object" src="/assets/objects/burger.svg" width="96" height="96" alt="" />
+          <img class="start__object" src="/assets/objects/ball.svg" width="116" height="116" alt="" />
+          <img class="start__object" src="/assets/objects/tree-1.svg" width="96" height="96" alt="" />
         </div>
         <h1 class="start__title">Speller</h1>
-        <p class="start__sub">
-          Предметы падают. Назови их вслух по-английски — и они разлетаются.
-          Упустишь один — раунд окончен.
+        <p class="start__sub" data-i18n="start.sub">
+          Предметы падают. Успей назвать вслух — предмет сбит. Упустишь один — раунд окончен.
         </p>
       </div>
 
       <div class="start__foot">
-        <button class="btn btn--cta" type="button" id="start-play">Играть</button>
-        <p class="start__note" id="start-note">
+        <!-- Язык обучения. Три кнопки, а не выпадающий список: вариантов три,
+             и выбор должен быть виден без нажатия — это первое решение,
+             которое человек принимает в игре. -->
+        <div>
+          <p class="eyebrow eyebrow--on-sky" id="learn-label" data-i18n="start.learn">Учу язык</p>
+          <div class="chips" role="radiogroup" aria-labelledby="learn-label" id="learn-langs"></div>
+        </div>
+
+        <button class="btn btn--cta" type="button" id="start-play" data-i18n="start.play">Играть</button>
+
+        <p class="start__note" id="start-note" data-i18n="start.note">
           Нужен микрофон и интернет: распознавание работает на сервере.
         </p>
       </div>
@@ -61,7 +167,13 @@
       </div>
 
       <header class="hud">
-        <button class="glass glass--round" type="button" id="quit" aria-label="Выйти">
+        <button
+          class="glass glass--round"
+          type="button"
+          id="quit"
+          data-i18n-aria="play.quit"
+          aria-label="Выйти"
+        >
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
             <path
               d="M15 5 8 12l7 7"
@@ -73,14 +185,36 @@
           </svg>
         </button>
 
-        <span class="glass">
+        <!-- role="status": счёт меняется по ходу раунда, и экранный диктор
+             должен сообщать об этом сам. Подпись нужна пилюле целиком —
+             повесить её на число нельзя, иначе диктор прочитает подпись
+             вместо счёта. -->
+        <span class="glass" role="status" data-i18n-aria="play.score" aria-label="Очки">
           <img src="/assets/objects/target-3.svg" width="20" height="20" alt="" />
           <span class="score" id="score">0</span>
         </span>
 
-        <span class="glass glass--round" aria-hidden="true">
-          <img src="/assets/objects/dog-1.svg" width="24" height="24" alt="" />
-        </span>
+        <!-- Подсказка. Кнопка не переключатель: слова видно, пока её держат.
+             Так подсказка остаётся выбором «подсмотреть сейчас», а не режимом,
+             в котором можно случайно доиграть весь раунд. -->
+        <button
+          class="glass glass--round hint-toggle"
+          type="button"
+          id="hint"
+          aria-pressed="false"
+          data-i18n-aria="play.hint"
+          aria-label="Показать слова: нажать и держать"
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+            <path
+              d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linejoin="round"
+            />
+            <circle cx="12" cy="12" r="3" fill="currentColor" />
+          </svg>
+        </button>
       </header>
 
       <!-- Предметы создаёт игровой цикл; линия внизу — граница, ниже которой
@@ -96,39 +230,54 @@
     </main>
 
     <!-- ── Экран проигрыша ───────────────────────────────────────────────── -->
-    <main class="screen screen--paper" id="screen-finish" hidden>
+    <main class="screen screen--paper screen--scroll" id="screen-finish" hidden>
       <div class="finish__hero">
         <!-- Героем экрана стоит не абстрактный маскот, а тот самый предмет,
              который не успели назвать: человек видит ровно то, что упустил. -->
-        <img class="finish__mascot" id="finish-object" src="/assets/objects/ball.svg" alt="" />
-        <h1 class="display">Сбит!</h1>
-        <p class="lead">Одно слово от вас ускользнуло. Послушайте его ниже и взлетайте снова.</p>
+        <img
+          class="finish__mascot"
+          id="finish-object"
+          src="/assets/objects/ball.svg"
+          width="128"
+          height="128"
+          alt=""
+        />
+        <h1 class="display" data-i18n="finish.title">Сбит!</h1>
+        <p class="lead" data-i18n="finish.lead">
+          Одно слово от вас ускользнуло. Послушайте его ниже и взлетайте снова.
+        </p>
       </div>
 
       <div class="finish__foot">
         <div class="stats">
           <div class="stat">
-            <img class="stat__icon" src="/assets/ui/circle-clock.svg" alt="" />
-            <div class="stat__label">Время</div>
+            <img class="stat__icon" src="/assets/ui/circle-clock.svg" width="24" height="24" alt="" />
+            <div class="stat__label" data-i18n="finish.time">Время</div>
             <div class="stat__value" id="stat-time">0:00</div>
           </div>
           <div class="stat">
-            <img class="stat__icon" src="/assets/objects/target-3.svg" alt="" />
-            <div class="stat__label">Очки</div>
+            <img class="stat__icon" src="/assets/objects/target-3.svg" width="24" height="24" alt="" />
+            <div class="stat__label" data-i18n="finish.score">Очки</div>
             <div class="stat__value" id="stat-score">0</div>
           </div>
           <div class="stat">
-            <img class="stat__icon" src="/assets/ui/check-thick.svg" alt="" />
-            <div class="stat__label">Слова</div>
+            <img class="stat__icon" src="/assets/ui/check-thick.svg" width="24" height="24" alt="" />
+            <div class="stat__label" data-i18n="finish.words">Слова</div>
             <div class="stat__value" id="stat-words">0</div>
           </div>
         </div>
 
         <div>
-          <p class="eyebrow">Слово, которое вас подвело</p>
+          <p class="eyebrow" data-i18n="finish.eyebrow">Слово, которое вас подвело</p>
           <div class="word">
             <span class="word__text" id="finish-word">Ball</span>
-            <button class="word__action" type="button" id="speak" aria-label="Послушать">
+            <button
+              class="word__action"
+              type="button"
+              id="speak"
+              data-i18n-aria="finish.speak"
+              aria-label="Послушать"
+            >
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
                 <path
                   d="M4 9.5h3.2L12 5.5v13L7.2 14.5H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1Z"
@@ -145,7 +294,7 @@
           </div>
         </div>
 
-        <button class="btn btn--cta" type="button" id="again">Ещё раз</button>
+        <button class="btn btn--cta" type="button" id="again" data-i18n="finish.again">Ещё раз</button>
       </div>
     </main>
 

@@ -13,9 +13,10 @@ import {
   findHits,
   levenshtein,
   normalize,
+  PROFILES,
   Utterance,
 } from '../src/core/matcher';
-import { CONCEPTS, acceptedWords } from '../src/data/concepts';
+import { acceptedWords, CONCEPTS, conceptsFor, LANG_CODES, LANGS } from '../src/data/concepts';
 
 const targets = (...pairs: Array<[string, string[]]>) => pairs.map(([id, words]) => ({ id, words }));
 
@@ -215,22 +216,65 @@ describe('Utterance: растущий хвост interim', () => {
   });
 });
 
+describe('письмо разных языков', () => {
+  it('кириллица переживает разбор, а не выбрасывается целиком', () => {
+    // До появления профилей `[^a-z]` съедал русскую расшифровку до пустоты,
+    // и попаданий не было вовсе — ни одного, никогда.
+    expect(normalize('Мяч, дерево!', PROFILES.ru)).toEqual(['мяч', 'дерево']);
+    expect(normalize('Ёлка', PROFILES.ru)).toEqual(['елка']);
+  });
+
+  it('вьетнамские тоны снимаются, а слоги остаются', () => {
+    expect(normalize('Xe đạp', PROFILES.vi)).toEqual(['xe', 'dap']);
+    expect(normalize('Nhà vệ sinh', PROFILES.vi)).toEqual(['nha', 've', 'sinh']);
+  });
+
+  it('неверно услышанный тон не отменяет верно названное слово', () => {
+    // Движок ставит тоны заметно менее уверенно, чем сами слоги, а кандидатов
+    // на экране пять. Отбрасывать верное слово из-за тона — худший обмен.
+    const heard = normalize('ca', PROFILES.vi).join(' ');
+    const expected = normalize('cá', PROFILES.vi).join(' ');
+    expect(compare(heard, expected, PROFILES.vi)).toBe('exact');
+  });
+
+  it('фонетика английского на другие языки не переносится', () => {
+    // Double Metaphone кодирует латиницу по английским правилам. Для русского
+    // он выключен: иначе «мяч» и «меч» получили бы один код через транслит,
+    // которого никто не делал.
+    expect(PROFILES.ru.phonetic).toBe(false);
+    expect(PROFILES.vi.phonetic).toBe(false);
+  });
+});
+
 describe('словарь игры', () => {
-  it('каждое слово засчитывает само себя', () => {
-    for (const concept of CONCEPTS) {
-      const accepted = acceptedWords(concept, 'en-US');
-      const hits = findHits(normalize(accepted[0]!), [{ id: concept.id, words: accepted }]);
-      expect(hits, `${concept.id} не узнаёт себя`).toHaveLength(1);
+  it.each(LANG_CODES)('на языке %s каждое слово засчитывает само себя', (lang) => {
+    const profile = LANGS[lang].profile;
+    for (const concept of conceptsFor(lang)) {
+      const accepted = acceptedWords(concept, lang);
+      for (const word of accepted) {
+        const hits = findHits(normalize(word, profile), [{ id: concept.id, words: accepted }], profile);
+        expect(hits, `${concept.id}: «${word}» не засчитывается на ${lang}`).toHaveLength(1);
+      }
     }
   });
 
-  it('синонимы тоже засчитываются', () => {
-    for (const concept of CONCEPTS) {
-      const accepted = acceptedWords(concept, 'en-US');
-      for (const word of accepted) {
-        const hits = findHits(normalize(word), [{ id: concept.id, words: accepted }]);
-        expect(hits, `${concept.id}: "${word}" не засчитывается`).toHaveLength(1);
+  it.each(LANG_CODES)('на языке %s подписи умещаются в окно поиска', (lang) => {
+    // Подпись длиннее окна нельзя сбить в принципе, и заметить это на глаз
+    // невозможно: слово просто иногда «не срабатывает».
+    const profile = LANGS[lang].profile;
+    for (const concept of conceptsFor(lang)) {
+      for (const word of acceptedWords(concept, lang)) {
+        const length = normalize(word, profile).length;
+        expect(length, `${concept.id}: «${word}» длиннее окна ${profile.maxWindow}`).toBeLessThanOrEqual(
+          profile.maxWindow,
+        );
       }
+    }
+  });
+
+  it('у каждого понятия есть подпись хотя бы на одном языке', () => {
+    for (const concept of CONCEPTS) {
+      expect(Object.keys(concept.labels).length, `${concept.id} без подписей`).toBeGreaterThan(0);
     }
   });
 
@@ -246,21 +290,33 @@ describe('словарь игры', () => {
       Set {
         "cheese ↔ chess",
         "chess ↔ chest",
+        "bin ↔ chess",
         "cherries ↔ stool",
         "cake ↔ sofa",
+        "safe ↔ sofa",
         "ball ↔ bowl",
         "bell ↔ bowl",
+        "bowl ↔ pill",
         "bowl ↔ pool",
         "ball ↔ bell",
+        "ball ↔ pill",
         "ball ↔ mall",
         "ball ↔ pool",
+        "bell ↔ pill",
         "bell ↔ pool",
+        "pill ↔ pool",
+        "airplane ↔ plate",
         "earth ↔ plate",
+        "airplane ↔ earth",
+        "airplane ↔ balloon",
+        "meat ↔ park",
         "beach ↔ bicycle",
         "bag ↔ beach",
         "bag ↔ bicycle",
         "bed ↔ ship",
         "ship ↔ store",
+        "elevator ↔ gift",
+        "mask ↔ music",
       }
     `);
   });

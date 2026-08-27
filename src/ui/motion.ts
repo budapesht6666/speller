@@ -82,6 +82,21 @@ export function swapScreens(from: HTMLElement, to: HTMLElement): void {
     .to(to, { opacity: 1, y: 0, duration: 0.5 });
 }
 
+/**
+ * Снимает заставку загрузки.
+ *
+ * Узел удаляется, а не прячется: он больше не понадобится никогда, а `hidden`
+ * оставил бы поверх приложения элемент во весь экран — ровно ту вещь, которая
+ * однажды всплывёт как «клики не проходят».
+ */
+export function hideBoot(node: HTMLElement): void {
+  if (calm) {
+    node.remove();
+    return;
+  }
+  gsap.to(node, { opacity: 0, duration: 0.4, onComplete: () => node.remove() });
+}
+
 /** Предметы на стартовом экране лениво покачиваются. */
 export function floatIdle(nodes: HTMLElement[]): void {
   if (calm) return;

@@ -21,6 +21,11 @@ export type RecognizerState = 'idle' | 'starting' | 'listening' | 'blocked' | 'e
 export interface RecognizerEvents {
   /** Промежуточная расшифровка: индекс пачки и её текст. */
   onTranscript(segmentIndex: number, transcript: string, isFinal: boolean): void;
+  /**
+   * Состояние микрофона. `detail` — код ошибки движка (`network`,
+   * `audio-capture`) и только он: тексты для человека живут в data/i18n.ts,
+   * потому что переводятся, а этот модуль про язык интерфейса не знает.
+   */
   onStateChange(state: RecognizerState, detail?: string): void;
   /** Сессия оборвалась и вот-вот перезапустится: хвост надо сбросить. */
   onSessionEnd(): void;
@@ -72,8 +77,25 @@ function getConstructor(): SpeechRecognitionCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
-export function isRecognitionSupported(): boolean {
-  return getConstructor() !== null;
+/** Что именно мешает распознаванию прямо сейчас. */
+export type RecognitionBlocker = 'none' | 'insecure' | 'unsupported';
+
+/**
+ * Проверка перед показом кнопки «Играть».
+ *
+ * Защищённый контекст проверяется первым, и это главное здесь. По http
+ * распознавания нет ни в одном браузере, причём WebKit в этом случае просто не
+ * заводит конструктор — то есть отсутствие конструктора на телефоне означает
+ * «открыто по http», а вовсе не «браузер не умеет». Совет сменить браузер в
+ * этой ситуации отправляет человека чинить не то.
+ *
+ * `localhost` защищённым считается: поэтому на своей машине всё идёт, а с
+ * телефона по адресу вида `http://192.168.x.x` не работает ничего. Проверено:
+ * по https на iPhone распознавание есть в любом браузере, не только в Safari.
+ */
+export function recognitionBlocker(): RecognitionBlocker {
+  if (!window.isSecureContext) return 'insecure';
+  return getConstructor() ? 'none' : 'unsupported';
 }
 
 export class Recognizer {
@@ -83,16 +105,28 @@ export class Recognizer {
   private state: RecognizerState = 'idle';
 
   constructor(
-    private readonly lang: string,
+    private lang: string,
     private readonly events: RecognizerEvents,
   ) {}
+
+  /**
+   * Смена языка распознавания.
+   *
+   * Применяется к следующей сессии, а не к текущей: `lang` живущей сессии
+   * Safari игнорирует, а перезапуск ради этого означал бы отпустить микрофон
+   * посреди раунда — после чего он, по замерам, возвращается мёртвым.
+   * Язык меняют на стартовом экране, где сессии и нет.
+   */
+  setLang(lang: string): void {
+    this.lang = lang;
+  }
 
   /** Обязан вызываться из обработчика касания: Safari иначе не даст микрофон. */
   start(): void {
     if (this.wanted) return;
     const Ctor = getConstructor();
     if (!Ctor) {
-      this.setState('error', 'В этом браузере нет распознавания речи');
+      this.setState('error');
       return;
     }
     this.wanted = true;
@@ -145,7 +179,7 @@ export class Recognizer {
       // бессмыслен: она не рассосётся сама и требует действий человека.
       if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
         this.wanted = false;
-        this.setState('blocked', 'Микрофон недоступен');
+        this.setState('blocked');
         return;
       }
       // `no-speech` и `aborted` — рабочий шум, а не сбой: движок так сообщает
@@ -170,7 +204,7 @@ export class Recognizer {
         try {
           this.spawn(Ctor);
         } catch {
-          this.setState('error', 'не удалось перезапустить распознавание');
+          this.setState('error');
         }
       }, 150);
     };

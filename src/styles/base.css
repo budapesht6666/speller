@@ -35,6 +35,22 @@ body {
   overscroll-behavior: none;
 }
 
+/* Оболочка приложения.
+
+   Правила навешены на [data-screen], а не на body вообще, потому что этот же
+   файл подключает стенд дизайн-системы — обычная прокручиваемая страница, у
+   которой ни одного `.screen` нет. Атрибут ставит goTo(), и он же переключает
+   фон: поле вокруг телефонной колонки на широком экране — небо на игровых
+   экранах и серая бумага под экраном проигрыша. */
+body[data-screen] {
+  overflow: hidden;
+  background: var(--sky-gradient) fixed;
+}
+
+body[data-screen='finish'] {
+  background: var(--c-backdrop);
+}
+
 /* Ничто в игре не выделяется по долгому нажатию и не подсвечивается при
    касании — иначе приложение выдаёт в себе веб-страницу. Поля ввода
    исключены осознанно: там выделение нужно. */
@@ -66,16 +82,43 @@ svg {
 
 /* ── Экран ─────────────────────────────────────────────────────────────── */
 
-/* dvh, а не vh: в Safari на iOS строка адреса меняет высоту вьюпорта, и на
-   vh нижняя пилюля уезжает под неё. В standalone разницы нет, но во вкладке
-   она заметна сразу. */
+/* Экраны лежат друг на друге, а не друг под другом. Причин две. Во время
+   перехода обе половины видны одновременно, и в обычном потоке страница на
+   долю секунды становится вдвое выше и дёргается. И поле полёта должно быть
+   ровно в высоту окна, а не в высоту содержимого.
+
+   Растяжка по горизонтали вместе с max-width и margin-inline: auto даёт
+   колонку по центру: на телефоне она занимает всё окно, на мониторе стоит
+   посередине. Игра рассчитана на большой палец, растягивать её на 27 дюймов
+   незачем. */
 .screen {
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-screen);
+  /* Высота именно dvh, а не inset: 0. Во вкладке Safari на iOS фиксированный
+     элемент с inset: 0 растягивается на вьюпорт без учёта строки адреса, и
+     нижняя пилюля «Слушаю» уезжает под панель браузера. В standalone разницы
+     нет, но проверять игру приходится и во вкладке. Первая строка — запасная
+     для браузеров без dvh. */
+  height: 100%;
+  height: 100dvh;
+  max-width: var(--app-width);
+  margin-inline: auto;
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
   padding: calc(env(safe-area-inset-top) + var(--space-3)) var(--gutter)
     calc(env(safe-area-inset-bottom) + var(--space-4));
+}
+
+/* Без этой строки скрытые экраны видны все сразу. `[hidden] { display: none }`
+   живёт в стилях браузера, а `.screen { display: flex }` — в авторских, и
+   авторские сильнее всегда, независимо от специфичности. Ровно та же строка
+   продублирована критическим стилем в <head>: до загрузки этого файла экраны
+   тоже не должны показываться разом. */
+.screen[hidden] {
+  display: none;
 }
 
 .screen--sky {
@@ -85,6 +128,17 @@ svg {
 
 .screen--paper {
   background: var(--c-paper);
+}
+
+/* Экраны, которые нельзя обрезать.
+
+   В альбомной ориентации телефона и в низком окне на мониторе содержимое выше
+   доступной высоты, а `body` не прокручивается — без этого кнопка «Играть»
+   просто оказывалась бы за краем и нажать её было бы нечем. Игровому экрану
+   прокрутка, наоборот, противопоказана: там обрезка по краям и есть правило. */
+.screen--scroll {
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* ── Стекло: пилюли поверх неба ────────────────────────────────────────── */
@@ -103,8 +157,12 @@ svg {
   backdrop-filter: blur(var(--blur-glass));
 }
 
+/* Круглая кнопка в шапке. Минимум 44 px — иначе палец промахивается; с одной
+   иконкой внутри кнопка иначе получается 38 px и мажет. */
 .glass--round {
   padding: var(--space-2);
+  min-width: 44px;
+  min-height: 44px;
   aspect-ratio: 1;
   justify-content: center;
 }
@@ -141,12 +199,67 @@ svg {
 
 /* ── Предмет в полёте ──────────────────────────────────────────────────── */
 
+/* Узлов два, и это не украшательство. Внешний двигает игровой цикл, переписывая
+   transform каждый кадр; внутренний анимирует GSAP. Пока то и другое сидело на
+   одном узле, тик затирал transform твина, и появление предмета попросту не
+   было видно. */
 .object {
   position: absolute;
-  width: var(--object-size, 84px);
-  height: var(--object-size, 84px);
-  filter: drop-shadow(var(--shadow-object));
+  top: 0;
+  left: 0;
+  width: var(--object-size);
   will-change: transform;
+}
+
+.object__art {
+  width: var(--object-size);
+  height: var(--object-size);
+  filter: drop-shadow(var(--shadow-object));
+}
+
+/* ── Подсказка на предмете ─────────────────────────────────────────────── */
+
+/* Слово, которое надо назвать. Показывается, пока игрок держит палец на
+   глазике, и сразу у всех предметов на экране — иначе подсказка отвечает не на
+   тот вопрос: «что это» вместо «что говорить».
+
+   Скрытая подсказка не исчезает из раскладки, а гасится прозрачностью: узел
+   уже посчитан, и включение не должно ничего пересчитывать посреди падения. */
+.object__hint {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  translate: -50% var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-width) solid var(--c-glass-border);
+  border-radius: var(--radius-pill);
+  background: var(--c-glass-active);
+  color: var(--c-glass-ink);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+  pointer-events: none;
+}
+
+/* Состояние живёт на предке, а не на поле: так же его включает стенд
+   дизайн-системы, где никакого игрового поля нет. */
+[data-hint='on'] .object__hint {
+  opacity: 1;
+}
+
+/* Глазик в шапке, пока его держат. Кнопка не «залипает»: состояние живёт ровно
+   столько, сколько нажат палец, и отпускание всегда его снимает. */
+.hint-toggle {
+  /* Долгое нажатие — рабочий жест этой кнопки, и iOS не должен принимать его
+     за попытку что-то выделить или вызвать меню. */
+  -webkit-touch-callout: none;
+}
+
+.hint-toggle[aria-pressed='true'] {
+  background: var(--c-glass-active);
 }
 
 /* ── Заголовки ─────────────────────────────────────────────────────────── */
@@ -284,6 +397,15 @@ svg {
   box-shadow: 0 0 0 var(--c-accent-deep), 0 4px 12px rgba(250, 80, 0, 0.28);
 }
 
+/* Кнопка, нажимать которую бессмысленно: в этом окружении игра не заработает.
+   Гасим, но не прячем — под ней стоит объяснение причины, и кнопка нужна как
+   якорь для него. */
+.btn:disabled {
+  opacity: 0.5;
+  box-shadow: none;
+  cursor: default;
+}
+
 .btn--quiet {
   min-height: 44px;
   border-radius: var(--radius-pill);
@@ -363,7 +485,7 @@ svg {
 .cloud {
   position: absolute;
   border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--c-cloud);
   filter: blur(12px);
 }
 
@@ -398,7 +520,86 @@ svg {
   opacity: 0.85;
 }
 
+/* ── Выбор из нескольких значений ──────────────────────────────────────── */
+
+/* Две группы: язык обучения (три кнопки в ряд) и язык интерфейса (две буквы в
+   углу). Примитив один, потому что и там и там задача одинаковая — выбрать
+   одно значение из закрытого списка, стоя поверх неба. Радиокнопки браузера
+   тут не годятся: их не покрасить, а роль radiogroup даёт то же самое для
+   экранного диктора. */
+
+.chips {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.chip {
+  flex: 1;
+  min-height: 44px; /* меньше 44 px палец не берёт */
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--c-glass-border);
+  border-radius: var(--radius-pill);
+  background: var(--c-glass);
+  color: var(--c-glass-ink);
+  font-size: var(--text-small);
+  font-weight: var(--weight-semibold);
+  -webkit-backdrop-filter: blur(var(--blur-glass));
+  backdrop-filter: blur(var(--blur-glass));
+  transition:
+    background var(--duration-instant) var(--ease-out),
+    transform var(--duration-instant) var(--ease-out);
+}
+
+.chip[aria-checked='true'] {
+  background: var(--c-glass-active);
+  font-weight: var(--weight-black);
+}
+
+.chip:active {
+  transform: translateY(1px);
+}
+
+/* Язык интерфейса. Тот же приём, но компактно: две буквы в одной пилюле. */
+.seg {
+  display: inline-flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: var(--border-width) solid var(--c-glass-border);
+  border-radius: var(--radius-pill);
+  background: var(--c-glass);
+  -webkit-backdrop-filter: blur(var(--blur-glass));
+  backdrop-filter: blur(var(--blur-glass));
+}
+
+.seg__item {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  color: var(--c-glass-ink);
+  font-size: var(--text-small);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-micro);
+  opacity: 0.62;
+  transition: opacity var(--duration-instant) var(--ease-out);
+}
+
+.seg__item[aria-checked='true'] {
+  background: var(--c-glass-active);
+  opacity: 1;
+  font-weight: var(--weight-black);
+}
+
 /* ── Стартовый экран ───────────────────────────────────────────────────── */
+
+/* Верхняя строка — только переключатель языка интерфейса, прижатый вправо.
+   Заголовка здесь нет намеренно: он в герое, и второй титул на экране
+   с одной кнопкой лишний. */
+.start__top {
+  position: relative;
+  z-index: var(--z-hud);
+  display: flex;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+}
 
 .start__hero {
   position: relative;
@@ -408,6 +609,13 @@ svg {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  text-align: center;
+}
+
+/* Надзаголовок на небе. Тот же примитив, но --c-text-faint поверх градиента
+   не читается вовсе, поэтому цвет перекрывается стеклянным. */
+.eyebrow--on-sky {
+  color: var(--c-sky-ink-faint);
   text-align: center;
 }
 
@@ -447,7 +655,7 @@ svg {
   font-weight: var(--weight-black);
   letter-spacing: var(--tracking-display);
   line-height: var(--leading-tight);
-  color: var(--c-glass-ink);
+  color: var(--c-sky-ink);
 }
 
 .start__sub {
@@ -455,21 +663,24 @@ svg {
   max-width: var(--measure);
   font-size: var(--text-lead);
   line-height: var(--leading-normal);
-  color: rgba(255, 255, 255, 0.86);
+  color: var(--c-sky-ink-muted);
 }
 
 .start__foot {
   position: relative;
   z-index: var(--z-content, 10);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
   flex: 0 0 auto;
 }
 
 .start__note {
-  margin: var(--space-4) auto 0;
+  margin: 0 auto;
   max-width: var(--measure);
   font-size: var(--text-small);
   line-height: var(--leading-normal);
-  color: rgba(255, 255, 255, 0.68);
+  color: var(--c-sky-ink-faint);
   text-align: center;
 }
 

@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import { Game } from '../src/core/game';
 import { collidingWords, compare } from '../src/core/matcher';
-import { CONCEPTS, acceptedWords } from '../src/data/concepts';
+import { acceptedWords, conceptsFor, LANG_CODES, LANGS } from '../src/data/concepts';
 
 /**
  * Произносит слово так, как это делает движок: каждая новая фраза приходит
@@ -48,40 +48,48 @@ describe('спавн', () => {
     expect(peak).toBeLessThanOrEqual(4);
   });
 
-  it('никогда не показывает одновременно неразличимые для матчера предметы', () => {
-    // Главная проверка модуля. Если `ball` и `pool` окажутся рядом, игрок
-    // скажет одно, а сбито будет другое, и понять причину невозможно.
-    const clashes = collidingWords(
-      CONCEPTS.map((c) => ({ id: c.id, words: acceptedWords(c, 'en-US') })),
-    );
+  it.each(LANG_CODES)(
+    'на языке %s никогда не показывает одновременно неразличимые предметы',
+    (lang) => {
+      // Главная проверка модуля. Если `ball` и `pool` окажутся рядом, игрок
+      // скажет одно, а сбито будет другое, и понять причину невозможно.
+      // Проверяется на каждом языке: сталкиваются везде разные слова —
+      // по-английски ball и bowl, по-русски миска и маска.
+      const profile = LANGS[lang].profile;
+      const clashes = collidingWords(
+        conceptsFor(lang).map((c) => ({ id: c.id, words: acceptedWords(c, lang) })),
+        profile,
+      );
 
-    // Экран сразу заполняем доверху и всё время churn'им, иначе проверка
-    // окажется пустой: при одном предмете столкнуться попросту не с чем.
-    let seenPairs = 0;
-    for (let attempt = 0; attempt < 40; attempt++) {
-      const game = new Game({
-        initialFallSeconds: 600,
-        spawnIntervalSeconds: 0.05,
-        initialConcurrent: 4,
-      });
-      game.reset();
-      run(game, 30, () => {
-        const ids = game.items.map((i) => i.concept.id);
-        if (ids.length >= 2) seenPairs++;
-        for (const id of ids) {
-          for (const other of ids) {
-            if (id === other) continue;
-            expect(clashes.get(id)?.has(other), `${id} и ${other} оказались вместе`).toBeFalsy();
+      // Экран сразу заполняем доверху и всё время churn'им, иначе проверка
+      // окажется пустой: при одном предмете столкнуться попросту не с чем.
+      let seenPairs = 0;
+      for (let attempt = 0; attempt < 15; attempt++) {
+        const game = new Game({
+          lang,
+          initialFallSeconds: 600,
+          spawnIntervalSeconds: 0.05,
+          initialConcurrent: 4,
+        });
+        game.reset();
+        run(game, 30, () => {
+          const ids = game.items.map((i) => i.concept.id);
+          if (ids.length >= 2) seenPairs++;
+          for (const id of ids) {
+            for (const other of ids) {
+              if (id === other) continue;
+              expect(clashes.get(id)?.has(other), `${id} и ${other} оказались вместе`).toBeFalsy();
+            }
           }
-        }
-        // Сбиваем самый старый, освобождая место следующему.
-        const first = game.items[0];
-        if (first && ids.length === 4) say(game, first.word);
-      });
-    }
-    // Страховка от повторения истории: проверка обязана была что-то увидеть.
-    expect(seenPairs).toBeGreaterThan(1000);
-  });
+          // Сбиваем самый старый, освобождая место следующему.
+          const first = game.items[0];
+          if (first && ids.length === 4) say(game, first.word);
+        });
+      }
+      // Страховка от повторения истории: проверка обязана была что-то увидеть.
+      expect(seenPairs).toBeGreaterThan(1000);
+    },
+  );
 
   it('не повторяет одно понятие подряд', () => {
     const game = new Game({ initialFallSeconds: 600, spawnIntervalSeconds: 0.05, recentMemory: 12 });
@@ -147,7 +155,7 @@ describe('попадание', () => {
   });
 
   it('не реагирует на посторонние слова', () => {
-    const game = new Game({ initialFallSeconds: 600 });
+    const game = new Game({ lang: 'en-US', initialFallSeconds: 600 });
     game.reset();
     game.update(1 / 60);
     const item = game.items[0]!;

@@ -196,7 +196,16 @@
 /* Предмет на стенде: тот же размер и та же тень, что в игре, иначе стенд
    показывал бы не то, что человек увидит. */
 .ds-object-demo {
-  width: var(--object-size, 84px);
-  height: var(--object-size, 84px);
+  width: var(--object-size);
+  height: var(--object-size);
   filter: drop-shadow(var(--shadow-object));
+}
+
+/* Предмет с подсказкой. В игре `.object` ставит на место игровой цикл, здесь
+   его надо во что-то положить — обёртка возвращает предмету обычный поток и
+   оставляет место подсказке под ним. Сам примитив настоящий. */
+.ds-object-slot {
+  position: relative;
+  width: var(--object-size);
+  height: calc(var(--object-size) + var(--space-8));
 }

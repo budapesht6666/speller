@@ -10,7 +10,14 @@
  * высота поля разная на разных телефонах, а правила — одни.
  */
 
-import { CONCEPTS, acceptedWords, displayWord, type Concept, type LangCode } from '../data/concepts';
+import {
+  acceptedWords,
+  conceptsFor,
+  displayWord,
+  LANGS,
+  type Concept,
+  type LangCode,
+} from '../data/concepts';
 import { collidingWords, findHits, Utterance, type Target } from './matcher';
 
 export interface GameConfig {
@@ -75,7 +82,9 @@ export class Game {
   readonly items: FallingItem[] = [];
 
   private config: GameConfig;
-  private clashes: Map<string, Set<string>>;
+  /** Словарь выбранного языка: понятия без подписи на нём не выпадают. */
+  private pool: Concept[] = [];
+  private clashes: Map<string, Set<string>> = new Map();
   private recent: string[] = [];
   private nextKey = 1;
   private elapsed = 0;
@@ -88,9 +97,29 @@ export class Game {
 
   constructor(config: Partial<GameConfig> = {}) {
     this.config = { ...DEFAULT_GAME_CONFIG, ...config };
+    this.setLang(this.config.lang);
+  }
+
+  get lang(): LangCode {
+    return this.config.lang;
+  }
+
+  /**
+   * Смена языка обучения.
+   *
+   * Пересчитываются обе таблицы: словарь (у понятия может не быть подписи на
+   * этом языке) и неразличимые пары (`ball` ↔ `bowl` — беда английская,
+   * по-русски сталкиваются совсем другие слова). Считать это на каждом спавне
+   * незачем — за раунд язык не меняется.
+   */
+  setLang(lang: LangCode): void {
+    this.config.lang = lang;
+    this.pool = conceptsFor(lang);
     this.clashes = collidingWords(
-      CONCEPTS.map((c) => ({ id: c.id, words: acceptedWords(c, this.config.lang) })),
+      this.pool.map((c) => ({ id: c.id, words: acceptedWords(c, lang) })),
+      LANGS[lang].profile,
     );
+    this.utterance.useProfile(LANGS[lang].profile);
   }
 
   get isOver(): boolean {
@@ -151,10 +180,10 @@ export class Game {
       for (const clash of this.clashes.get(id) ?? []) forbidden.add(clash);
     }
 
-    const fresh = CONCEPTS.filter((c) => !forbidden.has(c.id) && !this.recent.includes(c.id));
+    const fresh = this.pool.filter((c) => !forbidden.has(c.id) && !this.recent.includes(c.id));
     // Если словарь исчерпан недавними, ослабляем именно этот запрет: он про
     // разнообразие. Запрет на неразличимые пары не ослабляем никогда.
-    const pool = fresh.length ? fresh : CONCEPTS.filter((c) => !forbidden.has(c.id));
+    const pool = fresh.length ? fresh : this.pool.filter((c) => !forbidden.has(c.id));
     if (!pool.length) return null;
     return pool[Math.floor(Math.random() * pool.length)]!;
   }
@@ -226,7 +255,7 @@ export class Game {
     }));
 
     const events: GameEvent[] = [];
-    for (const hit of findHits(words, targets)) {
+    for (const hit of findHits(words, targets, LANGS[this.config.lang].profile)) {
       const index = this.items.findIndex((i) => i.key === hit.id);
       if (index < 0) continue;
       const [item] = this.items.splice(index, 1);
