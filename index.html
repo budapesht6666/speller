@@ -194,27 +194,65 @@
           <span class="score" id="score">0</span>
         </span>
 
-        <!-- Подсказка. Кнопка не переключатель: слова видно, пока её держат.
-             Так подсказка остаётся выбором «подсмотреть сейчас», а не режимом,
-             в котором можно случайно доиграть весь раунд. -->
-        <button
-          class="glass glass--round hint-toggle"
-          type="button"
-          id="hint"
-          aria-pressed="false"
-          data-i18n-aria="play.hint"
-          aria-label="Показать слова: нажать и держать"
-        >
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
-            <path
-              d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linejoin="round"
-            />
-            <circle cx="12" cy="12" r="3" fill="currentColor" />
-          </svg>
-        </button>
+        <!-- Две кнопки справа стоят группой, а не поодиночке: шапка разложена
+             через space-between, и четыре самостоятельных элемента развели бы
+             счёт из середины экрана. -->
+        <div class="hud__group">
+          <!-- Музыка. Обычный переключатель с залипанием — в отличие от
+               подсказки рядом: слушать её надо весь раунд, а не мгновение.
+               Выбор переживает перезапуск. -->
+          <button
+            class="glass glass--round music-toggle"
+            type="button"
+            id="music"
+            aria-pressed="false"
+            data-i18n-aria="play.music"
+            aria-label="Музыка"
+          >
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+              <g class="music-toggle__note">
+                <path
+                  d="M9 16.2V5.8l9.5-1.9v10.4"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <circle cx="6.6" cy="16.6" r="2.6" fill="currentColor" />
+                <circle cx="16.1" cy="14.7" r="2.6" fill="currentColor" />
+              </g>
+              <path
+                class="music-toggle__slash"
+                d="M4.5 19.5 19.5 4.5"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+
+          <!-- Подсказка. Кнопка не переключатель: слова видно, пока её держат.
+               Так подсказка остаётся выбором «подсмотреть сейчас», а не режимом,
+               в котором можно случайно доиграть весь раунд. -->
+          <button
+            class="glass glass--round hint-toggle"
+            type="button"
+            id="hint"
+            aria-pressed="false"
+            data-i18n-aria="play.hint"
+            aria-label="Показать слова: нажать и держать"
+          >
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+              <path
+                d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linejoin="round"
+              />
+              <circle cx="12" cy="12" r="3" fill="currentColor" />
+            </svg>
+          </button>
+        </div>
       </header>
 
       <!-- Предметы создаёт игровой цикл; линия внизу — граница, ниже которой
@@ -294,7 +332,11 @@
           </div>
         </div>
 
-        <button class="btn btn--cta" type="button" id="again" data-i18n="finish.again">Ещё раз</button>
+        <!-- Ведёт на стартовый экран, а не сразу в новый раунд. Языки — и
+             интерфейса, и обучения — выбираются только там, а проигравший чаще
+             всего хочет сменить именно язык. Прыжок сразу в игру запирал бы
+             человека в одном языке до перезапуска приложения. -->
+        <button class="btn btn--cta" type="button" id="again" data-i18n="finish.again">Заново</button>
       </div>
     </main>
 

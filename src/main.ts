@@ -32,6 +32,7 @@ import {
   type UiLang,
 } from './data/i18n';
 import { appear, bumpScore, burst, floatIdle, hideBoot, pulse, swapScreens } from './ui/motion';
+import { Music } from './ui/sound';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -45,6 +46,7 @@ const scoreLabel = el('score');
 const listening = el('listening');
 const listeningText = el('listening-text');
 const hintButton = el('hint');
+const musicButton = el('music');
 
 /* ── Настройки ──────────────────────────────────────────────────────────── */
 
@@ -56,6 +58,7 @@ const hintButton = el('hint');
  */
 const STORE_UI = 'speller.ui-lang';
 const STORE_LEARN = 'speller.learn-lang';
+const STORE_MUSIC = 'speller.music';
 
 function remember(key: string, value: string): void {
   try {
@@ -75,6 +78,9 @@ function recall(key: string): string | null {
 
 const storedUi = recall(STORE_UI);
 const storedLearn = recall(STORE_LEARN);
+// Умолчание — «включена»: музыка часть замысла, а не добавка. Выключенной она
+// становится только по решению игрока, и это решение сохраняется.
+const storedMusic = recall(STORE_MUSIC);
 
 let uiLang: UiLang = isUiLang(storedUi) ? storedUi : detectUiLang();
 let learnLang: LangCode = isLangCode(storedLearn) ? storedLearn : 'en-US';
@@ -156,9 +162,11 @@ function applyUiLang(): void {
   document.documentElement.lang = uiLang;
   applyStrings(document, uiLang);
   markChoice('uiLang', uiLang);
-  // Пилюля «Слушаю» текст берёт из состояния, а не из разметки: подписи
-  // data-i18n на ней нет, и обновить её надо руками.
+  // Пилюля «Слушаю» и кнопка музыки берут подпись из состояния, а не из
+  // разметки: у обеих ключ зависит от того, что сейчас происходит, и
+  // data-i18n его не проставит.
   renderListening();
+  renderMusic();
   // Под кнопкой «Играть» либо обычная памятка, либо причина отказа. Строку
   // с причиной data-i18n не поставит: ключ зависит от окружения, а не от
   // разметки.
@@ -182,6 +190,37 @@ function setLearnLang(next: LangCode): void {
   recognizer.setLang(next);
   markChoice('learnLang', next);
 }
+
+/* ── Музыка ─────────────────────────────────────────────────────────────── */
+
+/**
+ * Фоновая музыка.
+ *
+ * Звучит только в раунде и заметно тише голоса: та же дорожка идёт в микрофон,
+ * и громкая музыка стала бы соперничать с игроком за распознавание. Насколько
+ * именно — измеряется на телефоне, в браузере на столе этого не увидеть.
+ */
+const music = new Music('/assets/audio/calm-ambient.mp3', storedMusic !== 'off', renderMusic);
+
+/**
+ * Вид кнопки. Три состояния, и все три различимы: играет, выключена игроком,
+ * недоступна.
+ */
+function renderMusic(): void {
+  musicButton.setAttribute('aria-pressed', String(music.enabled && !music.blocked));
+  musicButton.setAttribute('aria-disabled', String(music.blocked));
+  musicButton.setAttribute(
+    'aria-label',
+    t(uiLang, music.blocked ? 'play.musicBlocked' : 'play.music'),
+  );
+}
+
+musicButton.addEventListener('click', () => {
+  if (music.blocked) return;
+  music.setEnabled(!music.enabled);
+  remember(STORE_MUSIC, music.enabled ? 'on' : 'off');
+  renderMusic();
+});
 
 /* ── Экраны ─────────────────────────────────────────────────────────────── */
 
@@ -361,11 +400,17 @@ function startRound(): void {
   scoreLabel.textContent = '0';
   goTo('play');
   recognizer.start();
+  // Внутри обработчика касания и никак иначе: AudioContext до жеста создаётся
+  // `suspended`, и на iOS разбудить его больше нечем.
+  music.enterRound();
 }
 
 function finishRound(missedItem: FallingItem): void {
   recognizer.stop();
   setHint(false);
+  // Музыка уходит до появления экрана: там жмут «Послушать», и слово должно
+  // звучать в тишине.
+  music.leaveRound();
 
   const { seconds, score, words } = game.stats;
   el('stat-time').textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
@@ -400,12 +445,18 @@ el('speak').addEventListener('click', () => {
 /* ── Кнопки ─────────────────────────────────────────────────────────────── */
 
 el('start-play').addEventListener('click', startRound);
-el('again').addEventListener('click', startRound);
-el('quit').addEventListener('click', () => {
+// «Заново» ведёт на стартовый экран, а не в новый раунд: языки выбираются
+// только там, и проигравший чаще всего хочет сменить именно язык.
+el('again').addEventListener('click', backToStart);
+el('quit').addEventListener('click', backToStart);
+
+/** Возврат на стартовый экран — одинаковый и по «Выйти», и по «Заново». */
+function backToStart(): void {
   recognizer.stop();
   setHint(false);
+  music.leaveRound();
   goTo('start');
-});
+}
 
 /* ── Первый экран ───────────────────────────────────────────────────────── */
 

@@ -55,6 +55,82 @@
             </button>
           </div>
 
+          <!-- Музыка: три состояния подряд, иначе разницу между «выключена»
+               и «недоступна» не видно, пока не столкнёшься с ней в игре. -->
+          <div class="ds-demo__row">
+            <button class="glass glass--round music-toggle" type="button" aria-pressed="true">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+                <g class="music-toggle__note">
+                  <path
+                    d="M9 16.2V5.8l9.5-1.9v10.4"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <circle cx="6.6" cy="16.6" r="2.6" fill="currentColor" />
+                  <circle cx="16.1" cy="14.7" r="2.6" fill="currentColor" />
+                </g>
+                <path
+                  class="music-toggle__slash"
+                  d="M4.5 19.5 19.5 4.5"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+            <button class="glass glass--round music-toggle" type="button" aria-pressed="false">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+                <g class="music-toggle__note">
+                  <path
+                    d="M9 16.2V5.8l9.5-1.9v10.4"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <circle cx="6.6" cy="16.6" r="2.6" fill="currentColor" />
+                  <circle cx="16.1" cy="14.7" r="2.6" fill="currentColor" />
+                </g>
+                <path
+                  class="music-toggle__slash"
+                  d="M4.5 19.5 19.5 4.5"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+            <button
+              class="glass glass--round music-toggle"
+              type="button"
+              aria-pressed="false"
+              aria-disabled="true"
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+                <g class="music-toggle__note">
+                  <path
+                    d="M9 16.2V5.8l9.5-1.9v10.4"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <circle cx="6.6" cy="16.6" r="2.6" fill="currentColor" />
+                  <circle cx="16.1" cy="14.7" r="2.6" fill="currentColor" />
+                </g>
+                <path
+                  class="music-toggle__slash"
+                  d="M4.5 19.5 19.5 4.5"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+          </div>
+
           <!-- Выбор языка: обе группы стоят на небе, потому что живут на
                стартовом экране и нигде больше. -->
           <div class="ds-demo__row">

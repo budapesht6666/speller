@@ -26,6 +26,8 @@ export type StringKey =
   | 'start.uiLang'
   | 'play.quit'
   | 'play.hint'
+  | 'play.music'
+  | 'play.musicBlocked'
   | 'play.score'
   | 'listen.idle'
   | 'listen.starting'
@@ -52,6 +54,8 @@ const EN: Record<StringKey, string> = {
   'start.uiLang': 'Interface language',
   'play.quit': 'Quit',
   'play.hint': 'Show the words: press and hold',
+  'play.music': 'Music',
+  'play.musicBlocked': 'Music unavailable',
   'play.score': 'Score',
   'listen.idle': 'Microphone closed',
   'listen.starting': 'Opening the microphone…',
@@ -65,7 +69,7 @@ const EN: Record<StringKey, string> = {
   'finish.words': 'Words',
   'finish.eyebrow': 'The word that beat you',
   'finish.speak': 'Listen',
-  'finish.again': 'Again',
+  'finish.again': 'Start over',
 };
 
 const RU: Record<StringKey, string> = {
@@ -79,6 +83,8 @@ const RU: Record<StringKey, string> = {
   'start.uiLang': 'Язык интерфейса',
   'play.quit': 'Выйти',
   'play.hint': 'Показать слова: нажать и держать',
+  'play.music': 'Музыка',
+  'play.musicBlocked': 'Музыка недоступна',
   'play.score': 'Очки',
   'listen.idle': 'Микрофон закрыт',
   'listen.starting': 'Включаю микрофон…',
@@ -92,7 +98,7 @@ const RU: Record<StringKey, string> = {
   'finish.words': 'Слова',
   'finish.eyebrow': 'Слово, которое вас подвело',
   'finish.speak': 'Послушать',
-  'finish.again': 'Ещё раз',
+  'finish.again': 'Заново',
 };
 
 const VI: Record<StringKey, string> = {
@@ -107,6 +113,8 @@ const VI: Record<StringKey, string> = {
   'start.uiLang': 'Ngôn ngữ giao diện',
   'play.quit': 'Thoát',
   'play.hint': 'Hiện từ cần nói: nhấn và giữ',
+  'play.music': 'Nhạc nền',
+  'play.musicBlocked': 'Không phát được nhạc nền',
   'play.score': 'Điểm',
   'listen.idle': 'Micrô đã tắt',
   'listen.starting': 'Đang bật micrô…',
@@ -120,7 +128,7 @@ const VI: Record<StringKey, string> = {
   'finish.words': 'Từ',
   'finish.eyebrow': 'Từ đã đánh bại bạn',
   'finish.speak': 'Nghe',
-  'finish.again': 'Chơi lại',
+  'finish.again': 'Bắt đầu lại',
 };
 
 const STRINGS: Record<UiLang, Record<StringKey, string>> = { en: EN, ru: RU, vi: VI };

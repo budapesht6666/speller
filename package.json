@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "assets": "node scripts/fetch-assets.mjs"
+    "assets": "node scripts/fetch-assets.mjs",
+    "music": "node scripts/fetch-music.mjs"
   },
   "dependencies": {
     "double-metaphone": "^2.0.1",
