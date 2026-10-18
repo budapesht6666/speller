@@ -445,12 +445,13 @@ el('speak').addEventListener('click', () => {
 /* ── Кнопки ─────────────────────────────────────────────────────────────── */
 
 el('start-play').addEventListener('click', startRound);
-// «Заново» ведёт на стартовый экран, а не в новый раунд: языки выбираются
-// только там, и проигравший чаще всего хочет сменить именно язык.
-el('again').addEventListener('click', backToStart);
+// «Заново» — сразу новый раунд на том же языке. Сменить язык можно только на
+// стартовом экране, и туда ведёт «Меню».
+el('again').addEventListener('click', startRound);
+el('menu').addEventListener('click', backToStart);
 el('quit').addEventListener('click', backToStart);
 
-/** Возврат на стартовый экран — одинаковый и по «Выйти», и по «Заново». */
+/** Возврат на стартовый экран — одинаковый и по «Выйти», и по «Меню». */
 function backToStart(): void {
   recognizer.stop();
   setHint(false);

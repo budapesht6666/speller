@@ -56,6 +56,7 @@ describe('строки интерфейса', () => {
     'finish.eyebrow',
     'finish.speak',
     'finish.again',
+    'finish.menu',
   ];
 
   it.each(UI_LANGS)('на языке %s заполнены все', (lang: UiLang) => {

@@ -41,7 +41,8 @@ export type StringKey =
   | 'finish.words'
   | 'finish.eyebrow'
   | 'finish.speak'
-  | 'finish.again';
+  | 'finish.again'
+  | 'finish.menu';
 
 const EN: Record<StringKey, string> = {
   'start.sub': 'Objects fall. Say the word in time and the object goes down. Miss one and the round is over.',
@@ -70,6 +71,7 @@ const EN: Record<StringKey, string> = {
   'finish.eyebrow': 'The word that beat you',
   'finish.speak': 'Listen',
   'finish.again': 'Start over',
+  'finish.menu': 'Menu',
 };
 
 const RU: Record<StringKey, string> = {
@@ -99,6 +101,7 @@ const RU: Record<StringKey, string> = {
   'finish.eyebrow': 'Слово, которое вас подвело',
   'finish.speak': 'Послушать',
   'finish.again': 'Заново',
+  'finish.menu': 'Меню',
 };
 
 const VI: Record<StringKey, string> = {
@@ -129,6 +132,7 @@ const VI: Record<StringKey, string> = {
   'finish.eyebrow': 'Từ đã đánh bại bạn',
   'finish.speak': 'Nghe',
   'finish.again': 'Bắt đầu lại',
+  'finish.menu': 'Menu',
 };
 
 const STRINGS: Record<UiLang, Record<StringKey, string>> = { en: EN, ru: RU, vi: VI };

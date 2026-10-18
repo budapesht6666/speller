@@ -467,6 +467,18 @@ svg {
   gap: var(--space-5);
 }
 
+/* Две равные кнопки в ряд. Боковой отступ у кнопки уменьшен: на половине
+   ширины «BẮT ĐẦU LẠI» иначе не влезает в одну строку. */
+.finish__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.finish__actions .btn {
+  padding-inline: var(--space-3);
+}
+
 /* ── Раскладка игрового экрана ─────────────────────────────────────────── */
 
 .hud {
